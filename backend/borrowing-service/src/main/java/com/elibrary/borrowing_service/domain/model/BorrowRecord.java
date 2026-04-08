@@ -94,7 +94,11 @@ public class BorrowRecord {
             throw new IllegalStateException(
                 "Maximum renewal limit of " + MAX_RENEWALS + " has been reached.");
         }
-        transitionTo(BorrowStatus.RENEWED);
+        // Only transition if coming from ACTIVE; a RENEWED record stays RENEWED
+        // (RENEWED → RENEWED is not in the 6 valid transitions — status doesn't change, dates do)
+        if (this.status == BorrowStatus.ACTIVE) {
+            transitionTo(BorrowStatus.RENEWED);
+        }
         this.dueDate = LocalDate.now().plusDays(LOAN_PERIOD_DAYS);
         this.renewCount++;
         return this;
