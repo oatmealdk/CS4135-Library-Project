@@ -124,8 +124,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    profiles:
-      - full
 
   # notification service for sending notifications to users
   notification-service:
