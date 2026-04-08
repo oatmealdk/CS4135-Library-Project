@@ -21,10 +21,9 @@ tmp.*
 .temp
 .tmp
 
-# Test files
+# Test files (frontend/JS patterns only - don't add test/ here because it'll ignore src/test/ in Java services)
 test.*
 *.test.*
-test/
 
 # Output of compiling
 out/
