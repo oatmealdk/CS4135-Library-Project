@@ -1,6 +1,7 @@
 package com.elibrary.user_service.controller;
 
 import com.elibrary.user_service.dto.AuthResponse;
+import com.elibrary.user_service.dto.LoginRequest;
 import com.elibrary.user_service.dto.RegisterRequest;
 import com.elibrary.user_service.service.AuthService;
 import jakarta.validation.Valid;
@@ -19,5 +20,10 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
     }
 }

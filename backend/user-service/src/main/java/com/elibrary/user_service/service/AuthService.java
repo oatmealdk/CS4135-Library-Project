@@ -9,6 +9,7 @@ import com.elibrary.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.elibrary.user_service.dto.LoginRequest;
 
 @Service
 public class AuthService {
@@ -38,5 +39,19 @@ public class AuthService {
 
         return new AuthResponse(saved.getId(), saved.getName(),
                 saved.getEmail(), saved.getRole(), token, "Registration successful");
+    }
+
+    public AuthResponse login(LoginRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+
+        if (!encoder.matches(request.getPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Invalid email or password");
+        }
+
+        String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
+
+        return new AuthResponse(user.getId(), user.getName(),
+                user.getEmail(), user.getRole(), token, "Login successful");
     }
 }
