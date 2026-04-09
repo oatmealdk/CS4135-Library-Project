@@ -31,7 +31,7 @@ public class AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPasswordHash(encoder.encode(request.getPassword()));
-        user.setRole(Role.STUDENT);
+        user.setRole(determineRole(request.getEmail()));
 
         User saved = userRepository.save(user);
 
@@ -39,6 +39,16 @@ public class AuthService {
 
         return new AuthResponse(saved.getId(), saved.getName(),
                 saved.getEmail(), saved.getRole(), token, "Registration successful");
+    }
+
+    private Role determineRole(String email) {
+        String domain = email.substring(email.indexOf("@") + 1);
+        if (domain.equals("studentmail.ul.ie")) {
+            return Role.STUDENT;
+        } else if (domain.equals("ul.ie") || domain.equals("lero.ie")) {
+            return Role.STAFF;
+        }
+        throw new RuntimeException("Registration is only allowed with UL email addresses");
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -54,4 +64,20 @@ public class AuthService {
         return new AuthResponse(user.getId(), user.getName(),
                 user.getEmail(), user.getRole(), token, "Login successful");
     }
+
+    public AuthResponse getCurrentUser(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new RuntimeException("Missing or invalid token");
+        }
+
+        String token = authHeader.substring(7);
+        String email = jwtUtil.extractEmail(token);
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return new AuthResponse(user.getId(), user.getName(),
+                user.getEmail(), user.getRole(), token, "Authenticated");
+    }
+
 }
