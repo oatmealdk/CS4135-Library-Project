@@ -113,13 +113,17 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       EUREKA_URI: http://eureka-server:8761/eureka
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
     depends_on:
       eureka-server:
         condition: service_healthy
       config-server:
         condition: service_healthy
-    profiles:
-      - full
+      rabbitmq:
+        condition: service_healthy
 
   # notification service for sending notifications to users
   notification-service:
