@@ -3,7 +3,7 @@ package com.elibrary.book_service.domain.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "category")
+@Table(name = "category", schema = "book")
 public class Category {
 
     @Id

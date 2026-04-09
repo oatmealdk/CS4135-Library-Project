@@ -65,7 +65,7 @@ public class CatalogueManagementService {
     }
 
     public BookDTO addBook(BookDTO request) {
-        validateCopies(request.getTotalCopies(), request.getAvailableCopies());
+        validateCopies(request.getTotalCopies(), request.getTotalCopies());
         if (bookRepository.existsByIsbn(request.getIsbn())) {
             throw new IllegalArgumentException("ISBN already exists: " + request.getIsbn());
         }
@@ -78,8 +78,8 @@ public class CatalogueManagementService {
         book.setPublishYear(request.getPublishYear());
         book.setDescription(request.getDescription());
         book.setTotalCopies(request.getTotalCopies());
-        book.setAvailableCopies(request.getAvailableCopies());
-        book.setStatus(deriveAvailabilityStatus(request.getAvailableCopies()));
+        book.setAvailableCopies(request.getTotalCopies());
+        book.setStatus(deriveAvailabilityStatus(request.getTotalCopies()));
 
         Book saved = bookRepository.save(book);
         replaceBookCategories(saved.getBookId(), request.getCategoryIds());

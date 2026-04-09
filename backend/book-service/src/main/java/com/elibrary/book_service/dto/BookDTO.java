@@ -31,8 +31,6 @@ public class BookDTO {
     @Min(1)
     private Integer totalCopies;
 
-    @NotNull
-    @Min(0)
     private Integer availableCopies;
 
     private BookStatus status;

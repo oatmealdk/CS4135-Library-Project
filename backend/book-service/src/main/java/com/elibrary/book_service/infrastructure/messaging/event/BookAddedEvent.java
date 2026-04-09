@@ -1,6 +1,7 @@
 package com.elibrary.book_service.infrastructure.messaging.event;
 
 import java.time.LocalDateTime;
+import java.io.Serializable;
 
 public record BookAddedEvent(
     Long bookId,
@@ -9,5 +10,5 @@ public record BookAddedEvent(
     String isbn,
     Integer totalCopies,
     LocalDateTime timestamp
-) {
+) implements Serializable {
 }
