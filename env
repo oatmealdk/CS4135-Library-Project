@@ -1,0 +1,9 @@
+USER_DB_URL=jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require
+BORROWING_DB_URL=jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require
+BOOK_DB_URL=jdbc:postgresql://aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require
+
+DB_USERNAME=postgres.ynljnlayeiqubivtllpx
+DB_PASSWORD=elibfionncs4135
+
+RABBITMQ_USER=guest
+RABBITMQ_PASS=guest
