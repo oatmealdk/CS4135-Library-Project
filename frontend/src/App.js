@@ -17,10 +17,10 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/login" element={<Login onLogin={() => setLoggedIn(true)} />} />
-                <Route path="/register" element={<Register onLogin={() => setLoggedIn(true)} />} />
+                <Route path="/login" element={<Login onLogin={() => setLoggedIn(true)} onLogout={() => setLoggedIn(false)} />} />
+                <Route path="/register" element={<Register onLogin={() => setLoggedIn(true)} onLogout={() => setLoggedIn(false)} />} />
                 <Route path="/dashboard" element={loggedIn ? <Dashboard onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
-                <Route path="/books" element={<Books />} />
+                <Route path="/books" element={loggedIn ? <Books onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
         </BrowserRouter>

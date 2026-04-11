@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
+import AppNav from '../components/AppNav';
 
-function Register({ onLogin }) {
+function Register({ onLogin, onLogout }) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -19,12 +20,20 @@ function Register({ onLogin }) {
             onLogin();
             navigate('/dashboard');
         } catch (err) {
-            setError(err.response?.data?.message || 'Registration failed');
+            if (err.response?.data?.message) {
+                setError(err.response.data.message);
+            } else if (err.request && !err.response) {
+                setError('Cannot reach user-service (port 8081). Check Docker: user-service must be running.');
+            } else {
+                setError('Registration failed');
+            }
         }
     };
 
     return (
-        <div style={styles.container}>
+        <div style={styles.page}>
+            <AppNav onLogout={onLogout} />
+            <div style={styles.container}>
             <form onSubmit={handleSubmit} style={styles.form}>
                 <h2 style={styles.title}>Register</h2>
                 {error && <p style={styles.error}>{error}</p>}
@@ -58,12 +67,14 @@ function Register({ onLogin }) {
                     Already have an account? <Link to="/login" style={styles.link}>Log In</Link>
                 </p>
             </form>
+            </div>
         </div>
     );
 }
 
 const styles = {
-    container: { display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f5f5f5' },
+    page: { minHeight: '100vh', background: '#f5f5f5', display: 'flex', flexDirection: 'column' },
+    container: { flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 16px' },
     form: { background: '#fff', padding: '40px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px' },
     title: { marginBottom: '24px', fontSize: '24px' },
     input: { width: '100%', padding: '12px', marginBottom: '16px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' },

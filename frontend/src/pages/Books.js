@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import bookApi from '../services/bookApi';
 import searchApi from '../services/searchApi';
+import AppNav from '../components/AppNav';
 
-function Books() {
-    const navigate = useNavigate();
+function Books({ onLogout }) {
 
     // catalogue data
     const [books, setBooks] = useState([]);
@@ -168,22 +167,9 @@ function Books() {
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-    };
-
     return (
-        <div>
-            <div style={styles.header}>
-                <h1 style={styles.headerTitle}>E-Library</h1>
-                <div style={styles.nav}>
-                    <span style={styles.navLink} onClick={() => navigate('/dashboard')}>Dashboard</span>
-                    <span style={{ ...styles.navLink, ...styles.navActive }}>Books</span>
-                    <button onClick={logout} style={styles.logoutBtn}>Log Out</button>
-                </div>
-            </div>
+        <div style={styles.page}>
+            <AppNav onLogout={onLogout} />
 
             <div style={styles.body}>
                 <h2 style={styles.pageTitle}>Book Catalogue</h2>
@@ -334,14 +320,8 @@ function Books() {
 }
 
 const styles = {
-    header: { background: '#fff', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
-    headerTitle: { fontSize: '20px' },
-    nav: { display: 'flex', alignItems: 'center', gap: '16px' },
-    navLink: { fontSize: '14px', color: '#666', cursor: 'pointer' },
-    navActive: { color: '#2563eb', fontWeight: '600' },
-    logoutBtn: { padding: '8px 16px', background: 'none', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#666' },
-
-    body: { padding: '32px', maxWidth: '900px', margin: '0 auto' },
+    page: { minHeight: '100vh', background: '#f5f5f5', display: 'flex', flexDirection: 'column' },
+    body: { padding: '32px', maxWidth: '900px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' },
     pageTitle: { fontSize: '24px', marginBottom: '24px' },
 
     error: { color: '#dc2626', fontSize: '13px', marginBottom: '12px', padding: '10px', background: '#fee2e2', borderRadius: '6px' },
