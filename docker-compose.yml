@@ -125,6 +125,23 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # search service — catalogue search/browse via book-service (Eureka)
+  search-service:
+    build:
+      context: ./backend/search-service
+      dockerfile: Dockerfile
+    container_name: elibrary-search
+    ports:
+      - "8085:8085"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+
   # notification service for sending notifications to users
   notification-service:
     build:
