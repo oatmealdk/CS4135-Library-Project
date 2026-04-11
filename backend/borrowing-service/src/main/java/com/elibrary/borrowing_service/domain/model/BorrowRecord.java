@@ -12,8 +12,18 @@ import java.time.LocalDate;
  * All modifications to Fine and RenewalRecord entities are routed through
  * this root to preserve transactional consistency.
  *
- * Invariants that are enforced here:
- *   I'll put the invariants that are enforced here later, since some of them will be enforced upstream in later classes.
+ * Invariants enforced directly here:
+ *   INV-B3: renewCount cannot exceed MAX_RENEWALS (enforced in renewBook)
+ *   INV-B4: a book cannot be renewed if status is OVERDUE (enforced in renewBook)
+ *   INV-B5: only valid BorrowStatus transitions are allowed (enforced in transitionTo)
+ *   INV-B6: returnDate is null while ACTIVE or RENEWED; set on RETURNED (enforced in returnBook)
+ *
+ * Invariants enforced upstream:
+ *   INV-B1: availableCopies > 0 checked in BorrowingService before create()
+ *   INV-B2: fine only if returnDate > dueDate + grace period — FineCalculationService
+ *   INV-B7: one unpaid fine per record — FineCalculationService
+ *   INV-B8: amount = dailyRate x daysOverdue — Fine.create()
+ *   INV-B9: max concurrent borrows — BorrowingService before create()
  */
 @Entity
 @Table(name = "borrow_record", schema = "borrowing")

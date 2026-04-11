@@ -111,8 +111,6 @@ public class BorrowingService {
         return BorrowRecordDTO.from(record, fine);
     }
 
-    // ─── Renew ───────────────────────────────────────────────────────────────
-
     public BorrowRecordDTO renewBook(Long recordId) {
         BorrowRecord record = findRecord(recordId);
         LocalDate previousDueDate = record.getDueDate();
@@ -156,12 +154,9 @@ public class BorrowingService {
 
     // this method will be called by the OverdueScheduler to mark overdue records
     public void markOverdueRecords() {
-        List<BorrowRecord> candidates = borrowRecordRepository.findByStatus(BorrowStatus.ACTIVE);
-        candidates.addAll(borrowRecordRepository.findByStatus(BorrowStatus.RENEWED));
+        List<BorrowRecord> candidates = borrowRecordRepository.findOverdueRecords(LocalDate.now());
 
-        candidates.stream()
-            .filter(BorrowRecord::isOverdue)
-            .forEach(record -> {
+        candidates.forEach(record -> {
                 record.markOverdue();
                 borrowRecordRepository.save(record);
                 eventPublisher.publishBookOverdue(new BookOverdueEvent(

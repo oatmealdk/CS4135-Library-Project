@@ -36,6 +36,7 @@
     </dependencyManagement>
 
     <dependencies>
+    
         <!-- Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -83,8 +84,6 @@
             <artifactId>resilience4j-spring-boot4</artifactId>
             <version>${resilience4j.version}</version>
         </dependency>
-        
-
 
         <!-- Observability -->
         <dependency>
@@ -103,6 +102,14 @@
             <artifactId>spring-rabbit-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- WebMvc Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
