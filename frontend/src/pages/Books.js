@@ -1,15 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bookApi from '../services/bookApi';
+import searchApi from '../services/searchApi';
 
 function Books() {
     const navigate = useNavigate();
+
+    // catalogue data
     const [books, setBooks] = useState([]);
     const [categories, setCategories] = useState([]);
-    const [searchTitle, setSearchTitle] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    // search fields
+    const [searchTitle, setSearchTitle] = useState('');
+    const [searchAuthor, setSearchAuthor] = useState('');
+    const [searchKeyword, setSearchKeyword] = useState('');
+    const [page, setPage] = useState(0);
+    const [pageSize] = useState(20);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalResults, setTotalResults] = useState(null);
+    const [querySummary, setQuerySummary] = useState('');
+    const [searchMode, setSearchMode] = useState('search'); // 'search' | 'direct'
+
+    // form toggles
     const [showAddForm, setShowAddForm] = useState(false);
     const [showCategoryForm, setShowCategoryForm] = useState(false);
 
@@ -20,21 +35,48 @@ function Books() {
     const [newCategory, setNewCategory] = useState({ name: '', description: '' });
 
     useEffect(() => {
-        fetchBooks();
+        runSearch(0);
         fetchCategories();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const fetchBooks = async (title = '') => {
+    // Search via search-service (/api/search) — supports title, author, keyword, pagination
+    const runSearch = async (targetPage = 0) => {
         setLoading(true);
+        setError('');
+        const params = { page: targetPage, size: pageSize };
+        if (searchTitle.trim()) params.title = searchTitle.trim();
+        if (searchAuthor.trim()) params.author = searchAuthor.trim();
+        if (searchKeyword.trim()) params.keyword = searchKeyword.trim();
+        try {
+            const res = await searchApi.get('/api/search', { params });
+            const data = res.data;
+            setBooks(data.results ?? []);
+            setTotalPages(data.totalPages ?? 0);
+            setTotalResults(data.totalResults ?? 0);
+            setQuerySummary(data.querySummary ?? '');
+            setPage(targetPage);
+            setSearchMode('search');
+        } catch (err) {
+            // search-service unavailable — fall back to book-service direct listing
+            await fetchBooksDirect(searchTitle);
+        }
+        setLoading(false);
+    };
+
+    // Fallback: call book-service directly (title filter only)
+    const fetchBooksDirect = async (title = '') => {
+        setSearchMode('direct');
         setError('');
         try {
             const params = title ? { title } : {};
             const res = await bookApi.get('/books', { params });
             setBooks(res.data.content || []);
+            setTotalPages(0);
+            setTotalResults(null);
         } catch (err) {
             setError('Failed to load books: ' + (err.response?.data?.message || err.message));
         }
-        setLoading(false);
     };
 
     const fetchCategories = async () => {
@@ -48,13 +90,21 @@ function Books() {
 
     const handleSearch = (e) => {
         e.preventDefault();
-        fetchBooks(searchTitle);
+        runSearch(0);
+    };
+
+    const handleClearSearch = () => {
+        setSearchTitle('');
+        setSearchAuthor('');
+        setSearchKeyword('');
+        setQuerySummary('');
+        setTotalResults(null);
+        runSearch(0);
     };
 
     const handleAddBook = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
+        setError(''); setSuccess('');
         try {
             await bookApi.post('/books', {
                 ...newBook,
@@ -64,7 +114,7 @@ function Books() {
             setSuccess('Book added successfully!');
             setShowAddForm(false);
             setNewBook({ isbn: '', title: '', author: '', publisher: '', publishYear: '', description: '', totalCopies: 1 });
-            fetchBooks();
+            runSearch(page);
         } catch (err) {
             setError('Failed to add book: ' + (err.response?.data?.message || err.message));
         }
@@ -72,8 +122,7 @@ function Books() {
 
     const handleAddCategory = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
+        setError(''); setSuccess('');
         try {
             await bookApi.post('/categories', newCategory);
             setSuccess('Category added!');
@@ -90,7 +139,7 @@ function Books() {
         try {
             await bookApi.put(`/books/${bookId}/decrement-copies`);
             setSuccess('Copy borrowed');
-            fetchBooks(searchTitle);
+            runSearch(page);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to decrement copies');
         }
@@ -101,7 +150,7 @@ function Books() {
         try {
             await bookApi.put(`/books/${bookId}/increment-copies`);
             setSuccess('Copy returned');
-            fetchBooks(searchTitle);
+            runSearch(page);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to increment copies');
         }
@@ -113,7 +162,7 @@ function Books() {
         try {
             await bookApi.delete(`/books/${bookId}`);
             setSuccess('Book removed from catalogue');
-            fetchBooks(searchTitle);
+            runSearch(page);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to remove book');
         }
@@ -127,7 +176,6 @@ function Books() {
 
     return (
         <div>
-            {/* Header - matches Dashboard.js style */}
             <div style={styles.header}>
                 <h1 style={styles.headerTitle}>E-Library</h1>
                 <div style={styles.nav}>
@@ -137,7 +185,6 @@ function Books() {
                 </div>
             </div>
 
-            {/* Content */}
             <div style={styles.body}>
                 <h2 style={styles.pageTitle}>Book Catalogue</h2>
 
@@ -145,17 +192,41 @@ function Books() {
                 {success && <p style={styles.success}>{success}</p>}
 
                 {/* Search */}
-                <form onSubmit={handleSearch} style={styles.searchRow}>
+                <form onSubmit={handleSearch} style={styles.searchGrid}>
                     <input
                         type="text"
-                        placeholder="Search by title..."
+                        placeholder="Title"
                         value={searchTitle}
                         onChange={(e) => setSearchTitle(e.target.value)}
                         style={styles.searchInput}
                     />
+                    <input
+                        type="text"
+                        placeholder="Author"
+                        value={searchAuthor}
+                        onChange={(e) => setSearchAuthor(e.target.value)}
+                        style={styles.searchInput}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Keyword"
+                        value={searchKeyword}
+                        onChange={(e) => setSearchKeyword(e.target.value)}
+                        style={styles.searchInput}
+                    />
                     <button type="submit" style={styles.btnPrimary}>Search</button>
-                    <button type="button" onClick={() => { setSearchTitle(''); fetchBooks(); }} style={styles.btnSecondary}>Clear</button>
+                    <button type="button" onClick={handleClearSearch} style={styles.btnSecondary}>Clear</button>
                 </form>
+
+                {querySummary && (
+                    <p style={styles.searchSummary}>
+                        {querySummary} &nbsp;·&nbsp; {totalResults} result{totalResults !== 1 ? 's' : ''}
+                        {totalPages > 1 && ` · page ${page + 1} / ${totalPages}`}
+                    </p>
+                )}
+                {searchMode === 'direct' && (
+                    <p style={styles.fallbackNote}>Search service unavailable — showing book-service results.</p>
+                )}
 
                 {/* Action buttons */}
                 <div style={styles.actionRow}>
@@ -236,13 +307,33 @@ function Books() {
                         ))}
                     </div>
                 )}
+
+                {/* Pagination — only shown when using search-service */}
+                {searchMode === 'search' && totalPages > 1 && (
+                    <div style={styles.pagination}>
+                        <button
+                            onClick={() => runSearch(page - 1)}
+                            disabled={page === 0}
+                            style={styles.btnSecondary}
+                        >
+                            &laquo; Prev
+                        </button>
+                        <span style={styles.pageInfo}>Page {page + 1} of {totalPages}</span>
+                        <button
+                            onClick={() => runSearch(page + 1)}
+                            disabled={page >= totalPages - 1}
+                            style={styles.btnSecondary}
+                        >
+                            Next &raquo;
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
 const styles = {
-    /* Header - matches Dashboard.js */
     header: { background: '#fff', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' },
     headerTitle: { fontSize: '20px' },
     nav: { display: 'flex', alignItems: 'center', gap: '16px' },
@@ -250,19 +341,17 @@ const styles = {
     navActive: { color: '#2563eb', fontWeight: '600' },
     logoutBtn: { padding: '8px 16px', background: 'none', border: '1px solid #ddd', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', color: '#666' },
 
-    /* Body */
     body: { padding: '32px', maxWidth: '900px', margin: '0 auto' },
     pageTitle: { fontSize: '24px', marginBottom: '24px' },
 
-    /* Alerts */
     error: { color: '#dc2626', fontSize: '13px', marginBottom: '12px', padding: '10px', background: '#fee2e2', borderRadius: '6px' },
     success: { color: '#059669', fontSize: '13px', marginBottom: '12px', padding: '10px', background: '#d1fae5', borderRadius: '6px' },
+    searchSummary: { fontSize: '13px', color: '#555', marginBottom: '16px' },
+    fallbackNote: { fontSize: '12px', color: '#9a3412', background: '#fff7ed', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px' },
 
-    /* Search */
-    searchRow: { display: 'flex', gap: '10px', marginBottom: '20px' },
-    searchInput: { flex: 1, padding: '12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' },
+    searchGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: '10px', marginBottom: '16px', alignItems: 'center' },
+    searchInput: { padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' },
 
-    /* Buttons */
     actionRow: { display: 'flex', gap: '10px', marginBottom: '20px' },
     btnPrimary: { padding: '10px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' },
     btnSecondary: { padding: '10px 20px', background: '#fff', color: '#666', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' },
@@ -271,7 +360,6 @@ const styles = {
     btnSmallSuccess: { padding: '6px 14px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
     btnSmallDanger: { padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
 
-    /* Cards & Forms - matches Login.js style */
     card: { background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '20px' },
     cardTitle: { fontSize: '18px', marginBottom: '16px' },
     formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
@@ -279,11 +367,9 @@ const styles = {
     input: { padding: '12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' },
     textarea: { width: '100%', padding: '12px', marginTop: '12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', minHeight: '60px' },
 
-    /* Misc */
     categoryLine: { fontSize: '14px', color: '#666', marginBottom: '20px' },
     muted: { color: '#999', textAlign: 'center', padding: '40px' },
 
-    /* Book cards */
     bookCard: { background: '#fff', padding: '16px 20px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '12px' },
     bookInfo: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
     bookTitle: { fontSize: '16px' },
@@ -291,7 +377,10 @@ const styles = {
     bookRight: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' },
     badge: { padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600' },
     copies: { fontSize: '13px', color: '#666' },
-    bookActions: { display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' }
+    bookActions: { display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #f0f0f0' },
+
+    pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '24px' },
+    pageInfo: { fontSize: '14px', color: '#555' },
 };
 
 export default Books;
