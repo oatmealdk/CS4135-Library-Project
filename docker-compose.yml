@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
 
   # RabbitMQ
@@ -60,9 +62,9 @@ services:
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: ${USER_DB_URL:-}
-      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
+      SPRING_DATASOURCE_URL: ${USER_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       EUREKA_URI: http://eureka-server:8761/eureka
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
     depends_on:
@@ -80,9 +82,9 @@ services:
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: ${BORROWING_DB_URL:-}
-      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
+      SPRING_DATASOURCE_URL: ${BORROWING_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       EUREKA_URI: http://eureka-server:8761/eureka
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -106,10 +108,9 @@ services:
     ports:
       - "8083:8083"
     environment:
-      SERVER_PORT: "8083"
-      SPRING_DATASOURCE_URL: ${BOOK_DB_URL:-}
-      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-}
+      SPRING_DATASOURCE_URL: ${BOOK_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       EUREKA_URI: http://eureka-server:8761/eureka
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -124,21 +125,25 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # search service — queries book catalogue via Eureka (no local DB)
-  search-service:
+  # notification service for sending notifications to users
+  notification-service:
     build:
-      context: ./backend/search-service
+      context: ./backend/notification-service
       dockerfile: Dockerfile
-    container_name: elibrary-search
+    container_name: elibrary-notification
     ports:
-      - "8085:8085"
+      - "8084:8084"
     environment:
       EUREKA_URI: http://eureka-server:8761/eureka
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS:-guest}
     depends_on:
       eureka-server:
         condition: service_healthy
-      config-server:
+      rabbitmq:
         condition: service_healthy
     profiles:
       - full
