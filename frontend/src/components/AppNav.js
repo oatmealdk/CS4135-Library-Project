@@ -63,6 +63,11 @@ function AppNav({ onLogout }) {
                 <NavLink to="/books" style={navLinkStyle} end>
                     Books
                 </NavLink>
+                {user?.role !== 'ADMIN' && (
+                    <NavLink to="/borrows" style={navLinkStyle} end>
+                        Borrows
+                    </NavLink>
+                )}
             </nav>
             <div style={styles.userInfo}>
                 {user && (

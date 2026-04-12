@@ -22,6 +22,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        // borrowing-service calls this without a JWT (RestTemplate from Docker network)
+                        .requestMatchers("/api/users/*/exists").permitAll()
                         .anyRequest().authenticated()
                 );
         return http.build();

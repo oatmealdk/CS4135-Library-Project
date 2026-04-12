@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import bookApi from '../services/bookApi';
+import borrowingApi from '../services/borrowingApi';
 import AppNav from '../components/AppNav';
+import { userHasActiveLoanOnBook } from '../utils/borrowUtils';
 
 function parseUser() {
     try {
@@ -16,6 +18,7 @@ function BookDetail({ onLogout }) {
     const navigate = useNavigate();
     const user = parseUser();
     const isAdmin = user.role === 'ADMIN';
+    const canBorrowAsPatron = !isAdmin && user?.id;
 
     const [book, setBook] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -23,11 +26,36 @@ function BookDetail({ onLogout }) {
     const [success, setSuccess] = useState('');
     const [editing, setEditing] = useState(false);
     const [editForm, setEditForm] = useState({});
+    const [borrowSubmitting, setBorrowSubmitting] = useState(false);
+    const [myBorrows, setMyBorrows] = useState([]);
+    const [myBorrowsLoading, setMyBorrowsLoading] = useState(true);
+
+    const loadMyBorrows = async () => {
+        if (!canBorrowAsPatron || !user?.id) {
+            setMyBorrows([]);
+            setMyBorrowsLoading(false);
+            return;
+        }
+        setMyBorrowsLoading(true);
+        try {
+            const res = await borrowingApi.get(`/borrows/user/${user.id}`);
+            setMyBorrows(res.data || []);
+        } catch {
+            setMyBorrows([]);
+        } finally {
+            setMyBorrowsLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchBook();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [bookId]);
+
+    useEffect(() => {
+        loadMyBorrows();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bookId, canBorrowAsPatron, user?.id]);
 
     const fetchBook = async () => {
         setLoading(true);
@@ -96,6 +124,37 @@ function BookDetail({ onLogout }) {
         }
     };
 
+    const handleBorrow = async () => {
+        setError('');
+        setSuccess('');
+        setBorrowSubmitting(true);
+        try {
+            await borrowingApi.post('/borrows', {
+                userId: user.id,
+                bookId: Number(bookId),
+            });
+            setSuccess('Book borrowed. You can manage it under My Borrows.');
+            await loadMyBorrows();
+            fetchBook();
+        } catch (err) {
+            const msg =
+                typeof err.response?.data === 'string'
+                    ? err.response.data
+                    : err.response?.data?.message || err.message;
+            setError(msg || 'Could not borrow this book.');
+        } finally {
+            setBorrowSubmitting(false);
+        }
+    };
+
+    const alreadyOnLoan =
+        book && userHasActiveLoanOnBook(myBorrows, book.bookId ?? Number(bookId));
+    const borrowEligible =
+        book &&
+        book.status !== 'REMOVED' &&
+        (book.availableCopies ?? 0) > 0 &&
+        !alreadyOnLoan;
+
     const statusStyle = (status) => {
         const map = {
             AVAILABLE: { background: '#dbeafe', color: '#2563eb' },
@@ -159,6 +218,34 @@ function BookDetail({ onLogout }) {
                             <div style={styles.descriptionSection}>
                                 <span style={styles.label}>Categories</span>
                                 <p style={styles.value}>IDs: {book.categoryIds.join(', ')}</p>
+                            </div>
+                        )}
+
+                        {/* Patron: borrow via borrowing-service (detail page) */}
+                        {canBorrowAsPatron && book.status !== 'REMOVED' && (
+                            <div style={styles.patronSection}>
+                                <div style={styles.patronActions}>
+                                    {myBorrowsLoading ? (
+                                        <p style={styles.mutedInline}>Loading your loans…</p>
+                                    ) : alreadyOnLoan ? (
+                                        <p style={styles.onLoanNote}>
+                                            You already have this book on loan. Manage it under My Borrows.
+                                        </p>
+                                    ) : borrowEligible ? (
+                                        <button
+                                            type="button"
+                                            onClick={handleBorrow}
+                                            disabled={borrowSubmitting}
+                                            style={styles.btnBorrow}
+                                        >
+                                            {borrowSubmitting ? 'Borrowing…' : 'Borrow this book'}
+                                        </button>
+                                    ) : (
+                                        <p style={styles.unavailableNote}>
+                                            No copies are currently available to borrow.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         )}
 
@@ -237,6 +324,7 @@ const styles = {
     error: { color: '#dc2626', fontSize: '13px', marginBottom: '12px', padding: '10px', background: '#fee2e2', borderRadius: '6px' },
     success: { color: '#059669', fontSize: '13px', marginBottom: '12px', padding: '10px', background: '#d1fae5', borderRadius: '6px' },
     muted: { color: '#999', textAlign: 'center', padding: '40px' },
+    mutedInline: { fontSize: '13px', color: '#6b7280', margin: 0 },
 
     card: { background: '#fff', padding: '32px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
 
@@ -251,6 +339,21 @@ const styles = {
 
     descriptionSection: { marginBottom: '20px' },
     description: { fontSize: '14px', color: '#555', lineHeight: '1.6', margin: '6px 0 0' },
+
+    patronSection: { marginTop: '8px' },
+    patronActions: { paddingTop: '12px', borderTop: '1px solid #f0f0f0' },
+    btnBorrow: {
+        padding: '10px 22px',
+        background: '#2563eb',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '6px',
+        fontSize: '14px',
+        fontWeight: '600',
+        cursor: 'pointer',
+    },
+    onLoanNote: { fontSize: '13px', color: '#1e40af', background: '#eff6ff', padding: '10px 12px', borderRadius: '6px', marginTop: '12px', marginBottom: 0 },
+    unavailableNote: { fontSize: '13px', color: '#92400e', background: '#fffbeb', padding: '10px 12px', borderRadius: '6px', marginTop: '12px', marginBottom: 0 },
 
     adminActions: { display: 'flex', gap: '10px', paddingTop: '20px', borderTop: '1px solid #f0f0f0', marginTop: '20px' },
     removedNote: { fontSize: '13px', color: '#6b7280', fontStyle: 'italic', marginTop: '20px', padding: '10px', background: '#f3f4f6', borderRadius: '6px' },

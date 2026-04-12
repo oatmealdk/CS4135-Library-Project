@@ -91,7 +91,8 @@ public class BorrowRecord {
     }
 
     /**
-     * Extends the due date by LOAN_PERIOD_DAYS from today.
+     * Extends the due date by {@link #LOAN_PERIOD_DAYS} from the current due date
+     * (standard loan renewal: more time from the existing deadline, not a reset from today).
      *
      * @throws IllegalStateException if INV-B3 or INV-B4 are violated.
      */
@@ -109,7 +110,7 @@ public class BorrowRecord {
         if (this.status == BorrowStatus.ACTIVE) {
             transitionTo(BorrowStatus.RENEWED);
         }
-        this.dueDate = LocalDate.now().plusDays(LOAN_PERIOD_DAYS);
+        this.dueDate = this.dueDate.plusDays(LOAN_PERIOD_DAYS);
         this.renewCount++;
         return this;
     }

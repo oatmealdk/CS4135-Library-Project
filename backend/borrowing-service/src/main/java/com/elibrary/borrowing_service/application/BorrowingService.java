@@ -69,6 +69,12 @@ public class BorrowingService {
                 "User has reached the maximum of " + maxConcurrentBorrows + " concurrent borrows.");
         }
 
+        // one active loan per book per user (second copy of same title not allowed)
+        if (borrowRecordRepository.existsByUserIdAndBookIdAndStatusIn(userId, bookId,
+                List.of(BorrowStatus.ACTIVE, BorrowStatus.RENEWED, BorrowStatus.OVERDUE))) {
+            throw new IllegalStateException("You already have a copy of this book on loan.");
+        }
+
         // check book availability before borrow can happen (ACL on BookServiceClient)
         BookServiceClient.BookAvailability availability = bookServiceClient.checkAvailability(bookId);
         if (!availability.available()) {
@@ -146,7 +152,8 @@ public class BorrowingService {
     @Transactional(readOnly = true)
     public List<BorrowRecordDTO> getActiveBorrowsByBook(Long bookId) {
         return borrowRecordRepository
-            .findByBookIdAndStatus(bookId, BorrowStatus.ACTIVE)
+            .findByBookIdAndStatusIn(bookId,
+                List.of(BorrowStatus.ACTIVE, BorrowStatus.RENEWED, BorrowStatus.OVERDUE))
             .stream()
             .map(BorrowRecordDTO::from)
             .collect(Collectors.toList());
