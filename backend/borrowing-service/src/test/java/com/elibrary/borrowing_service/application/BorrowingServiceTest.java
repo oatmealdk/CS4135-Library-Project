@@ -72,6 +72,8 @@ class BorrowingServiceTest {
             .thenReturn(new UserValidation(1L, true, true));
         when(borrowRecordRepository.countByUserIdAndStatusIn(eq(1L), anyList()))
             .thenReturn(0L);
+        when(borrowRecordRepository.existsByUserIdAndBookIdAndStatusIn(eq(1L), eq(100L), anyList()))
+            .thenReturn(false);
         when(bookServiceClient.checkAvailability(100L))
             .thenReturn(new BookAvailability(100L, true, 3));
         // simulate what JPA does: assign an id when the record is persisted
@@ -128,11 +130,29 @@ class BorrowingServiceTest {
     }
 
     @Test
+    void borrowBook_throwsWhenUserAlreadyHasActiveLoanOfSameBook() {
+        when(userServiceClient.validateUser(1L))
+            .thenReturn(new UserValidation(1L, true, true));
+        when(borrowRecordRepository.countByUserIdAndStatusIn(eq(1L), anyList()))
+            .thenReturn(0L);
+        when(borrowRecordRepository.existsByUserIdAndBookIdAndStatusIn(eq(1L), eq(100L), anyList()))
+            .thenReturn(true);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+            () -> borrowingService.borrowBook(1L, 100L));
+        assertTrue(ex.getMessage().contains("already have a copy"));
+        verify(bookServiceClient, never()).checkAvailability(anyLong());
+        verify(borrowRecordRepository, never()).save(any());
+    }
+
+    @Test
     void borrowBook_throwsWhenBookUnavailable_INV_B1() {
         when(userServiceClient.validateUser(1L))
             .thenReturn(new UserValidation(1L, true, true));
         when(borrowRecordRepository.countByUserIdAndStatusIn(eq(1L), anyList()))
             .thenReturn(0L);
+        when(borrowRecordRepository.existsByUserIdAndBookIdAndStatusIn(eq(1L), eq(100L), anyList()))
+            .thenReturn(false);
         when(bookServiceClient.checkAvailability(100L))
             .thenReturn(new BookAvailability(100L, false, 0));
 
@@ -198,7 +218,7 @@ class BorrowingServiceTest {
 
         assertEquals(BorrowStatus.RENEWED, dto.getStatus());
         assertEquals(1, dto.getRenewCount());
-        assertEquals(LocalDate.now().plusDays(BorrowRecord.LOAN_PERIOD_DAYS), dto.getDueDate());
+        assertEquals(LocalDate.now().plusDays(BorrowRecord.LOAN_PERIOD_DAYS * 2L), dto.getDueDate());
         verify(eventPublisher).publishBookRenewed(any(BookRenewedEvent.class));
     }
 
@@ -218,7 +238,7 @@ class BorrowingServiceTest {
         verify(renewalRecordRepository).save(captor.capture());
         RenewalRecord saved = captor.getValue();
         assertEquals(42L, saved.getRecordId());
-        assertEquals(LocalDate.now().plusDays(BorrowRecord.LOAN_PERIOD_DAYS), saved.getNewDueDate());
+        assertEquals(LocalDate.now().plusDays(BorrowRecord.LOAN_PERIOD_DAYS * 2L), saved.getNewDueDate());
     }
 
     // simulates the daily scheduled job finding two overdue records
@@ -272,7 +292,7 @@ class BorrowingServiceTest {
     @Test
     void getActiveBorrowsByBook_delegatesToRepository() {
         BorrowRecord record = savedRecord(42L, 1L, 100L);
-        when(borrowRecordRepository.findByBookIdAndStatus(100L, BorrowStatus.ACTIVE))
+        when(borrowRecordRepository.findByBookIdAndStatusIn(eq(100L), anyList()))
             .thenReturn(List.of(record));
 
         List<BorrowRecordDTO> result = borrowingService.getActiveBorrowsByBook(100L);

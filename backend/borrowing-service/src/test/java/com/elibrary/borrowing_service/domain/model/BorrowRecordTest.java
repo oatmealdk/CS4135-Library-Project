@@ -44,13 +44,13 @@ class BorrowRecordTest {
     }
 
     @Test
-    @DisplayName("renewBook() increments renewCount, sets RENEWED status, and sets dueDate to today + loan period")
+    @DisplayName("renewBook() increments renewCount, sets RENEWED status, and extends dueDate by loan period from current due date")
     void renewBook_incrementsCountAndExtendsDueDate() {
+        LocalDate before = record.getDueDate();
         record.renewBook();
         assertEquals(1, record.getRenewCount());
         assertEquals(BorrowStatus.RENEWED, record.getStatus());
-        // New due date is always today + LOAN_PERIOD_DAYS — equal to original on same day, which is correct
-        assertEquals(LocalDate.now().plusDays(BorrowRecord.LOAN_PERIOD_DAYS), record.getDueDate());
+        assertEquals(before.plusDays(BorrowRecord.LOAN_PERIOD_DAYS), record.getDueDate());
     }
 
     @Test

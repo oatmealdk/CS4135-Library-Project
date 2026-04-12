@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bookApi from '../services/bookApi';
+import borrowingApi from '../services/borrowingApi';
 import searchApi from '../services/searchApi';
 import AppNav from '../components/AppNav';
+import { userHasActiveLoanOnBook } from '../utils/borrowUtils';
+
+function patronBorrowEligible(book) {
+    return book.status !== 'REMOVED' && (book.availableCopies ?? 0) > 0;
+}
 
 function parseUser() {
     try {
@@ -16,6 +22,7 @@ function Books({ onLogout }) {
     const navigate = useNavigate();
     const user = parseUser();
     const isAdmin = user.role === 'ADMIN';
+    const canBorrowAsPatron = !isAdmin && user?.id;
 
     // catalogue data
     const [books, setBooks] = useState([]);
@@ -44,12 +51,32 @@ function Books({ onLogout }) {
         publishYear: '', description: '', totalCopies: 1
     });
     const [newCategory, setNewCategory] = useState({ name: '', description: '' });
+    const [borrowSubmittingId, setBorrowSubmittingId] = useState(null);
+    const [myBorrows, setMyBorrows] = useState([]);
+
+    const loadMyBorrows = async () => {
+        if (!canBorrowAsPatron || !user?.id) {
+            setMyBorrows([]);
+            return;
+        }
+        try {
+            const res = await borrowingApi.get(`/borrows/user/${user.id}`);
+            setMyBorrows(res.data || []);
+        } catch {
+            setMyBorrows([]);
+        }
+    };
 
     useEffect(() => {
         runSearch(0);
         fetchCategories();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        loadMyBorrows();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canBorrowAsPatron, user?.id]);
 
     // Search via search-service (/api/search) — supports title, author, keyword, pagination
     const runSearch = async (targetPage = 0) => {
@@ -179,6 +206,25 @@ function Books({ onLogout }) {
         }
     };
 
+    const handlePatronBorrow = async (bookId) => {
+        setError(''); setSuccess('');
+        setBorrowSubmittingId(bookId);
+        try {
+            await borrowingApi.post('/borrows', { userId: user.id, bookId });
+            setSuccess('Book borrowed — open My Borrows to manage or return.');
+            await loadMyBorrows();
+            runSearch(page);
+        } catch (err) {
+            const msg =
+                typeof err.response?.data === 'string'
+                    ? err.response.data
+                    : err.response?.data?.message || err.message;
+            setError(msg || 'Could not borrow this book.');
+        } finally {
+            setBorrowSubmittingId(null);
+        }
+    };
+
     return (
         <div style={styles.page}>
             <AppNav onLogout={onLogout} />
@@ -299,12 +345,32 @@ function Books({ onLogout }) {
                                     </div>
                                 </div>
 
-                                {/* Admin-only actions on each book */}
+                                {/* Admin — inventory (not borrowing-service) */}
                                 {isAdmin && (
                                     <div style={styles.bookActions}>
                                         <button onClick={() => handleDecrement(book.bookId)} disabled={book.availableCopies <= 0 || book.status === 'REMOVED'} style={styles.btnSmallWarn}>Borrow</button>
                                         <button onClick={() => handleIncrement(book.bookId)} disabled={book.availableCopies >= book.totalCopies || book.status === 'REMOVED'} style={styles.btnSmallSuccess}>Return</button>
                                         <button onClick={() => handleRemove(book.bookId)} disabled={book.status === 'REMOVED'} style={styles.btnSmallDanger}>Remove</button>
+                                    </div>
+                                )}
+                                {/* Student / staff — second entry point: borrow via borrowing-service */}
+                                {canBorrowAsPatron && book.status !== 'REMOVED' && (
+                                    <div style={styles.bookActions}>
+                                        {userHasActiveLoanOnBook(myBorrows, book.bookId) ? (
+                                            <span style={styles.onLoanHint}>You have this book on loan.</span>
+                                        ) : patronBorrowEligible(book) ? (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handlePatronBorrow(book.bookId);
+                                                }}
+                                                disabled={borrowSubmittingId === book.bookId}
+                                                style={styles.btnSmallBorrow}
+                                            >
+                                                {borrowSubmittingId === book.bookId ? 'Borrowing…' : 'Borrow'}
+                                            </button>
+                                        ) : null}
                                     </div>
                                 )}
                             </div>
@@ -357,6 +423,8 @@ const styles = {
     btnSmallWarn: { padding: '6px 14px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
     btnSmallSuccess: { padding: '6px 14px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
     btnSmallDanger: { padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
+    btnSmallBorrow: { padding: '6px 14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' },
+    onLoanHint: { fontSize: '12px', color: '#1e40af', fontWeight: '500' },
 
     card: { background: '#fff', padding: '24px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '20px' },
     cardTitle: { fontSize: '18px', marginBottom: '16px' },
