@@ -106,4 +106,39 @@ class BorrowRecordTest {
     void getDaysOverdue_zeroWhenNotOverdue() {
         assertEquals(0, record.getDaysOverdue());
     }
+
+    @Test
+    @DisplayName("applyTestingDueDate() sets due date on ACTIVE loan (QA)")
+    void applyTestingDueDate_active() {
+        LocalDate target = LocalDate.now().minusDays(3);
+        record.applyTestingDueDate(target);
+        assertEquals(target, record.getDueDate());
+        assertEquals(BorrowStatus.ACTIVE, record.getStatus());
+    }
+
+    @Test
+    @DisplayName("applyTestingDueDate() sets due date on RENEWED loan (QA)")
+    void applyTestingDueDate_renewed() {
+        record.renewBook();
+        LocalDate target = LocalDate.now().minusWeeks(1);
+        record.applyTestingDueDate(target);
+        assertEquals(target, record.getDueDate());
+        assertEquals(BorrowStatus.RENEWED, record.getStatus());
+    }
+
+    @Test
+    @DisplayName("applyTestingDueDate() throws when RETURNED")
+    void applyTestingDueDate_throwsWhenReturned() {
+        record.returnBook();
+        assertThrows(IllegalStateException.class,
+            () -> record.applyTestingDueDate(LocalDate.now()));
+    }
+
+    @Test
+    @DisplayName("applyTestingDueDate() throws when OVERDUE")
+    void applyTestingDueDate_throwsWhenOverdue() {
+        record.markOverdue();
+        assertThrows(IllegalStateException.class,
+            () -> record.applyTestingDueDate(LocalDate.now().plusDays(7)));
+    }
 }

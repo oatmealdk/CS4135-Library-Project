@@ -76,4 +76,29 @@ public class BookServiceClient {
         //  book has been returned, copy count update can be retried.
         log.error("Could not increment copies for bookId={}, this will require manual correction: {}", bookId, t.getMessage());
     }
+
+    /** Title, author, ISBN for admin fines UI. */
+    public record BookSummary(String title, String author, String isbn) {}
+
+    /**
+     * Separate circuit from availability/decrement so catalogue write failures do not blank book labels on fines.
+     */
+    @CircuitBreaker(name = "bookServiceSummary", fallbackMethod = "bookSummaryFallback")
+    @Retry(name = "bookServiceSummary")
+    public BookSummary getBookSummary(Long bookId) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = restTemplate.getForObject(BASE_URL + "/{bookId}", Map.class, bookId);
+        if (response == null) {
+            return new BookSummary("Unavailable", "—", "—");
+        }
+        String title = response.get("title") != null ? String.valueOf(response.get("title")) : "—";
+        String author = response.get("author") != null ? String.valueOf(response.get("author")) : "—";
+        String isbn = response.get("isbn") != null ? String.valueOf(response.get("isbn")) : "—";
+        return new BookSummary(title, author, isbn);
+    }
+
+    public BookSummary bookSummaryFallback(Long bookId, Throwable t) {
+        log.warn("book-service book summary failed for bookId={}: {}", bookId, t.getMessage());
+        return new BookSummary("Unavailable", "—", "—");
+    }
 }

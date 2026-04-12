@@ -78,7 +78,7 @@ function Books({ onLogout }) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [canBorrowAsPatron, user?.id]);
 
-    // Search via search-service (/api/search) — supports title, author, keyword, pagination
+    // Search via search-service (/api/search) - supports title, author, keyword, pagination
     const runSearch = async (targetPage = 0) => {
         setLoading(true);
         setError('');
@@ -96,7 +96,7 @@ function Books({ onLogout }) {
             setPage(targetPage);
             setSearchMode('search');
         } catch (err) {
-            // search-service unavailable — fall back to book-service direct listing
+            // search-service unavailable - fall back to book-service direct listing
             await fetchBooksDirect(searchTitle);
         }
         setLoading(false);
@@ -172,28 +172,6 @@ function Books({ onLogout }) {
         }
     };
 
-    const handleDecrement = async (bookId) => {
-        setError(''); setSuccess('');
-        try {
-            await bookApi.put(`/books/${bookId}/decrement-copies`);
-            setSuccess('Copy borrowed');
-            runSearch(page);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to decrement copies');
-        }
-    };
-
-    const handleIncrement = async (bookId) => {
-        setError(''); setSuccess('');
-        try {
-            await bookApi.put(`/books/${bookId}/increment-copies`);
-            setSuccess('Copy returned');
-            runSearch(page);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to increment copies');
-        }
-    };
-
     const handleRemove = async (bookId) => {
         setError(''); setSuccess('');
         if (!window.confirm('Remove this book from the catalogue?')) return;
@@ -211,7 +189,7 @@ function Books({ onLogout }) {
         setBorrowSubmittingId(bookId);
         try {
             await borrowingApi.post('/borrows', { userId: user.id, bookId });
-            setSuccess('Book borrowed — open My Borrows to manage or return.');
+            setSuccess('Book borrowed - open My Borrows to manage or return.');
             await loadMyBorrows();
             runSearch(page);
         } catch (err) {
@@ -284,7 +262,7 @@ function Books({ onLogout }) {
                     </div>
                 )}
 
-                {/* Add Book Form — Admin only */}
+                {/* Add Book Form - Admin only */}
                 {isAdmin && showAddForm && (
                     <form onSubmit={handleAddBook} style={styles.card}>
                         <h3 style={styles.cardTitle}>Add New Book</h3>
@@ -301,7 +279,7 @@ function Books({ onLogout }) {
                     </form>
                 )}
 
-                {/* Add Category Form — Admin only */}
+                {/* Add Category Form - Admin only */}
                 {isAdmin && showCategoryForm && (
                     <form onSubmit={handleAddCategory} style={styles.card}>
                         <h3 style={styles.cardTitle}>Add New Category</h3>
@@ -345,15 +323,13 @@ function Books({ onLogout }) {
                                     </div>
                                 </div>
 
-                                {/* Admin — inventory (not borrowing-service) */}
+                                {/* Admin - catalogue management (borrowing/returns go through patron flows or desk) */}
                                 {isAdmin && (
                                     <div style={styles.bookActions}>
-                                        <button onClick={() => handleDecrement(book.bookId)} disabled={book.availableCopies <= 0 || book.status === 'REMOVED'} style={styles.btnSmallWarn}>Borrow</button>
-                                        <button onClick={() => handleIncrement(book.bookId)} disabled={book.availableCopies >= book.totalCopies || book.status === 'REMOVED'} style={styles.btnSmallSuccess}>Return</button>
                                         <button onClick={() => handleRemove(book.bookId)} disabled={book.status === 'REMOVED'} style={styles.btnSmallDanger}>Remove</button>
                                     </div>
                                 )}
-                                {/* Student / staff — second entry point: borrow via borrowing-service */}
+                                {/* Student / staff - second entry point: borrow via borrowing-service */}
                                 {canBorrowAsPatron && book.status !== 'REMOVED' && (
                                     <div style={styles.bookActions}>
                                         {userHasActiveLoanOnBook(myBorrows, book.bookId) ? (
@@ -378,7 +354,7 @@ function Books({ onLogout }) {
                     </div>
                 )}
 
-                {/* Pagination — only shown when using search-service */}
+                {/* Pagination - only shown when using search-service */}
                 {searchMode === 'search' && totalPages > 1 && (
                     <div style={styles.pagination}>
                         <button
@@ -420,8 +396,6 @@ const styles = {
     btnPrimary: { padding: '10px 20px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' },
     btnSecondary: { padding: '10px 20px', background: '#fff', color: '#666', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' },
     btnSuccess: { padding: '10px 20px', background: '#059669', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' },
-    btnSmallWarn: { padding: '6px 14px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
-    btnSmallSuccess: { padding: '6px 14px', background: '#059669', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
     btnSmallDanger: { padding: '6px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' },
     btnSmallBorrow: { padding: '6px 14px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', fontWeight: '600' },
     onLoanHint: { fontSize: '12px', color: '#1e40af', fontWeight: '500' },

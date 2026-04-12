@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Books from './pages/Books';
 import BookDetail from './pages/BookDetail';
 import Borrows from './pages/Borrows';
+import AdminFines from './pages/AdminFines';
+import AdminTesting from './pages/AdminTesting';
 
 function App() {
     const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem('token'));
@@ -25,6 +27,8 @@ function App() {
                 <Route path="/books" element={loggedIn ? <Books onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="/books/:bookId" element={loggedIn ? <BookDetail onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="/borrows" element={loggedIn ? <Borrows onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
+                <Route path="/admin/fines" element={loggedIn ? <AdminFines onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
+                <Route path="/admin/testing" element={loggedIn ? <AdminTesting onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
         </BrowserRouter>

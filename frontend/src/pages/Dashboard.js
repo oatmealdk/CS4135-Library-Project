@@ -13,11 +13,6 @@ function Dashboard({ onLogout }) {
     // Borrow summary - only fetched for non-admins
     const [borrowSummary, setBorrowSummary] = useState(null);
 
-    // Admin: manual overdue job (borrowing-service scheduler)
-    const [overdueCheckMsg, setOverdueCheckMsg] = useState('');
-    const [overdueCheckErr, setOverdueCheckErr] = useState('');
-    const [overdueCheckBusy, setOverdueCheckBusy] = useState(false);
-
     useEffect(() => {
         const init = async () => {
             try {
@@ -124,44 +119,58 @@ function Dashboard({ onLogout }) {
                 )}
 
                 {isAdmin && (
-                    <>
-                        <div style={styles.linkRow}>
-                            <Link to="/books" style={styles.primaryLink}>Manage catalogue →</Link>
-                        </div>
-                        <div style={styles.adminTools}>
-                            <p style={styles.adminToolsTitle}>Admin Testing Function</p>
-                            <p style={styles.adminToolsHint}>
-                                Runs the same overdue pass as daily overdue books check 01:00: ACTIVE/RENEWED → OVERDUE when due date has passed.
-                                Fines still apply only when a patron returns a book.
-                            </p>
-                            <button
-                                type="button"
-                                disabled={overdueCheckBusy}
-                                onClick={async () => {
-                                    setOverdueCheckMsg('');
-                                    setOverdueCheckErr('');
-                                    setOverdueCheckBusy(true);
-                                    try {
-                                        const res = await borrowingApi.post('/borrows/maintenance/run-overdue-check');
-                                        const n = res.data?.recordsMarkedOverdue ?? 0;
-                                        setOverdueCheckMsg(`Marked ${n} borrow record(s) as overdue.`);
-                                    } catch {
-                                        setOverdueCheckErr('Could not run overdue check.');
-                                    } finally {
-                                        setOverdueCheckBusy(false);
-                                    }
-                                }}
-                                style={styles.adminBtn}
-                            >
-                                {overdueCheckBusy ? 'Running…' : 'Run overdue check now'}
-                            </button>
-                            {overdueCheckMsg && <p style={styles.adminOk}>{overdueCheckMsg}</p>}
-                            {overdueCheckErr && <p style={styles.adminErr}>{overdueCheckErr}</p>}
-                        </div>
-                    </>
+                    <div style={styles.summaryRow}>
+                        <AdminNavCard
+                            to="/books"
+                            title="Catalogue"
+                            description="Search and manage books, categories, and removals."
+                            cta="Open catalogue →"
+                            accent="#2563eb"
+                            bg="#dbeafe"
+                        />
+                        <AdminNavCard
+                            to="/admin/fines"
+                            title="Fines"
+                            description="Review charges and mark desk payments as paid."
+                            cta="Open fines →"
+                            accent="#b45309"
+                            bg="#fef3c7"
+                        />
+                        <AdminNavCard
+                            to="/admin/testing"
+                            title="Borrowing - testing"
+                            description="Set due dates and run the overdue job manually to test fine functionality without waiting or editing the DB by hand."
+                            cta="Open testing tools →"
+                            accent="#7c3aed"
+                            bg="#ede9fe"
+                        />
+                    </div>
                 )}
             </div>
         </div>
+    );
+}
+
+/** Same shell as patron {@link SummaryCard}: centered tile, accent title, hover lift. */
+function AdminNavCard({ to, title, description, cta, accent, bg }) {
+    const [hover, setHover] = useState(false);
+    return (
+        <Link
+            to={to}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            style={{
+                ...styles.summaryCardLink,
+                ...(hover ? styles.summaryCardLinkHover : {}),
+            }}
+            aria-label={`${title}. ${cta}`}
+        >
+            <div style={{ ...styles.summaryCard, background: bg, borderColor: accent }}>
+                <span style={{ ...styles.summaryValue, fontSize: '22px', color: accent }}>{title}</span>
+                <span style={styles.adminNavDescription}>{description}</span>
+                <span style={{ ...styles.adminNavCta, color: accent }}>{cta}</span>
+            </div>
+        </Link>
     );
 }
 
@@ -189,7 +198,7 @@ function SummaryCard({ label, value, accent, bg }) {
 const styles = {
     page:        { minHeight: '100vh', background: '#f5f5f5', display: 'flex', flexDirection: 'column' },
     loadingWrap: { padding: '40px 32px', textAlign: 'center', color: '#999', flex: 1 },
-    main:        { padding: '40px 32px', maxWidth: '640px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' },
+    main:        { padding: '40px 32px', maxWidth: '960px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' },
     heading:     { fontSize: '24px', marginBottom: '24px', color: '#111' },
 
     fineAlert:     { marginBottom: '20px', padding: '14px 16px', borderRadius: '10px', background: '#fffbeb', border: '1px solid #f59e0b', maxWidth: '520px' },
@@ -212,17 +221,19 @@ const styles = {
     summaryCard: { padding: '20px', borderRadius: '10px', border: '1px solid', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', height: '100%', boxSizing: 'border-box' },
     summaryValue: { fontSize: '32px', fontWeight: '700', lineHeight: 1 },
     summaryLabel: { fontSize: '13px', color: '#555', textAlign: 'center' },
+    adminNavDescription: {
+        fontSize: '12px',
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 1.45,
+        maxWidth: '240px',
+    },
+    adminNavCta: { fontSize: '12px', fontWeight: '600', textAlign: 'center', marginTop: '2px' },
 
     linkRow:       { display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' },
     primaryLink:   { color: '#2563eb', fontSize: '14px', fontWeight: '600' },
     secondaryLink: { color: '#666', fontSize: '14px' },
 
-    adminTools:      { marginTop: '28px', padding: '16px', background: '#fff', borderRadius: '8px', border: '1px solid #e5e7eb', maxWidth: '520px' },
-    adminToolsTitle: { fontSize: '13px', fontWeight: '600', color: '#374151', margin: '0 0 8px 0' },
-    adminToolsHint:  { fontSize: '12px', color: '#6b7280', lineHeight: 1.5, margin: '0 0 12px 0' },
-    adminBtn:        { padding: '8px 14px', fontSize: '13px', background: '#111827', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' },
-    adminOk:         { fontSize: '12px', color: '#059669', margin: '10px 0 0 0' },
-    adminErr:        { fontSize: '12px', color: '#dc2626', margin: '10px 0 0 0' },
 };
 
 export default Dashboard;

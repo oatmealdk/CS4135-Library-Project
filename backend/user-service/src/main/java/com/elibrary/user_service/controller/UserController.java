@@ -11,8 +11,7 @@ import java.util.Map;
 
 /**
  * Internal API used by borrowing-service ({@code UserServiceClient}) to validate a user id
- * before creating a loan. No {@code active} flag exists on {@link com.elibrary.user_service.entity.User}
- * yet; any persisted user is treated as active.
+ * before creating a loan, and to show desk-facing patron details on fines. No password is exposed.
  */
 @RestController
 @RequestMapping("/api/users")
@@ -36,5 +35,21 @@ public class UserController {
             "exists", false,
             "isActive", false
         ));
+    }
+
+    /**
+     * Desk / borrowing-service: name and email for fines UI (no auth — same trust model as {@code /exists}).
+     */
+    @GetMapping("/{userId}/desk-profile")
+    public ResponseEntity<Map<String, String>> deskProfile(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+            .map(u -> ResponseEntity.ok(Map.of(
+                "name", u.getName(),
+                "email", u.getEmail()
+            )))
+            .orElseGet(() -> ResponseEntity.ok(Map.of(
+                "name", "Unknown patron",
+                "email", "—"
+            )));
     }
 }

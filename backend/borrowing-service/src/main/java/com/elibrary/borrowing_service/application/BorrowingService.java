@@ -1,6 +1,8 @@
 package com.elibrary.borrowing_service.application;
 
 import com.elibrary.borrowing_service.application.dto.BorrowRecordDTO;
+import com.elibrary.borrowing_service.application.dto.FineAdminDTO;
+import com.elibrary.borrowing_service.application.dto.FineDTO;
 import com.elibrary.borrowing_service.domain.model.BorrowRecord;
 import com.elibrary.borrowing_service.domain.model.BorrowStatus;
 import com.elibrary.borrowing_service.domain.model.Fine;
@@ -139,14 +141,14 @@ public class BorrowingService {
     public List<BorrowRecordDTO> getBorrowsByUser(Long userId) {
         return borrowRecordRepository.findByUserId(userId)
             .stream()
-            .map(r -> BorrowRecordDTO.from(r, getUnpaidFine(r)))
+            .map(r -> BorrowRecordDTO.from(r, fineForPatronView(r)))
             .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public BorrowRecordDTO getBorrowRecord(Long recordId) {
         BorrowRecord record = findRecord(recordId);
-        return BorrowRecordDTO.from(record, getUnpaidFine(record));
+        return BorrowRecordDTO.from(record, fineForPatronView(record));
     }
 
     @Transactional(readOnly = true)
@@ -178,6 +180,60 @@ public class BorrowingService {
         return candidates.size();
     }
 
+    /** All fines with patron and catalogue labels for admin / desk UI. */
+    @Transactional(readOnly = true)
+    public List<FineAdminDTO> listAllFinesForAdmin() {
+        return fineRepository.findAllByOrderByIssuedAtDesc().stream()
+            .map(this::toFineAdminDto)
+            .collect(Collectors.toList());
+    }
+
+    private FineAdminDTO toFineAdminDto(Fine fine) {
+        BorrowRecord record = borrowRecordRepository.findById(fine.getRecordId()).orElse(null);
+        Long bookId = record != null ? record.getBookId() : null;
+        BookServiceClient.BookSummary book = bookId != null
+            ? bookServiceClient.getBookSummary(bookId)
+            : new BookServiceClient.BookSummary("—", "—", "—");
+        UserServiceClient.DeskProfile patron = userServiceClient.getDeskProfile(fine.getUserId());
+        return new FineAdminDTO(
+            fine.getFineId(),
+            fine.getAmount(),
+            fine.getDaysOverdue(),
+            fine.getDailyRate(),
+            fine.getIssuedAt(),
+            fine.getPaidAt(),
+            fine.isPaid(),
+            patron.name(),
+            patron.email(),
+            book.title(),
+            book.author(),
+            book.isbn()
+        );
+    }
+
+    /** Records cash/card payment at the desk (or external payment confirmation). */
+    public FineDTO markFinePaid(Long fineId) {
+        Fine fine = fineRepository.findById(fineId)
+            .orElseThrow(() -> new IllegalArgumentException("Fine not found: " + fineId));
+        if (fine.isPaid()) {
+            throw new IllegalStateException("Fine is already marked as paid.");
+        }
+        fine.markAsPaid();
+        fineRepository.save(fine);
+        return FineDTO.from(fine);
+    }
+
+    /**
+     * QA / admin testing: sets due date on an ACTIVE or RENEWED loan without using renewals.
+     * Persists through the aggregate; use with {@code POST .../run-overdue-check} to exercise overdue flows.
+     */
+    public BorrowRecordDTO adminTestingSetDueDate(Long recordId, LocalDate dueDate) {
+        BorrowRecord record = findRecord(recordId);
+        record.applyTestingDueDate(dueDate);
+        borrowRecordRepository.save(record);
+        return BorrowRecordDTO.from(record, fineForPatronView(record));
+    }
+
     // putting som ehelper methodss here that use the repositories to get the data we need
 
     private BorrowRecord findRecord(Long recordId) {
@@ -185,7 +241,11 @@ public class BorrowingService {
             .orElseThrow(() -> new IllegalArgumentException("BorrowRecord not found: " + recordId));
     }
 
-    private Fine getUnpaidFine(BorrowRecord record) {
-        return fineRepository.findByRecordIdAndIsPaidFalse(record.getRecordId()).orElse(null);
+    /**
+     * Patron borrow history shows any fine linked to the loan (paid or unpaid). Unpaid-only was used
+     * previously, which hid settled fines after desk payment.
+     */
+    private Fine fineForPatronView(BorrowRecord record) {
+        return fineRepository.findFirstByRecordIdOrderByIssuedAtDesc(record.getRecordId()).orElse(null);
     }
 }

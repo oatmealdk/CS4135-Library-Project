@@ -120,6 +120,23 @@ public class BorrowRecord {
         transitionTo(BorrowStatus.OVERDUE);
     }
 
+    /**
+     * QA / admin testing only: sets {@code dueDate} directly (bypasses renewal rules).
+     * Permitted only while the loan is {@link BorrowStatus#ACTIVE} or {@link BorrowStatus#RENEWED}.
+     *
+     * @throws IllegalStateException if status is not ACTIVE or RENEWED
+     */
+    public void applyTestingDueDate(LocalDate newDueDate) {
+        if (newDueDate == null) {
+            throw new IllegalStateException("dueDate is required.");
+        }
+        if (status != BorrowStatus.ACTIVE && status != BorrowStatus.RENEWED) {
+            throw new IllegalStateException(
+                "Due date can only be adjusted for ACTIVE or RENEWED borrows (current status: " + status + ").");
+        }
+        this.dueDate = newDueDate;
+    }
+
     public boolean isOverdue() {
         return LocalDate.now().isAfter(dueDate) &&
                (status == BorrowStatus.ACTIVE || status == BorrowStatus.RENEWED);

@@ -52,4 +52,30 @@ public class UserServiceClient {
         // fail closed - deny borrow if user service is unreachable
         return new UserValidation(userId, false, false);
     }
+
+    /** Name and email for admin fines UI (desk). */
+    public record DeskProfile(String name, String email) {}
+
+    /**
+     * Uses a separate circuit breaker from {@link #validateUser} so borrow-validation failures
+     * do not open the circuit for desk-profile reads (otherwise patron shows "Unavailable").
+     */
+    @CircuitBreaker(name = "userServiceDesk", fallbackMethod = "deskProfileFallback")
+    @Retry(name = "userServiceDesk")
+    public DeskProfile getDeskProfile(Long userId) {
+        String url = BASE_URL + "/{userId}/desk-profile";
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = restTemplate.getForObject(url, Map.class, userId);
+        if (response == null) {
+            return new DeskProfile("Unavailable", "—");
+        }
+        String name = response.get("name") != null ? String.valueOf(response.get("name")) : "—";
+        String email = response.get("email") != null ? String.valueOf(response.get("email")) : "—";
+        return new DeskProfile(name, email);
+    }
+
+    public DeskProfile deskProfileFallback(Long userId, Throwable t) {
+        log.warn("user-service desk-profile failed for userId={}: {}", userId, t.getMessage());
+        return new DeskProfile("Unavailable", "—");
+    }
 }
