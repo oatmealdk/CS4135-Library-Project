@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import bookApi from '../services/bookApi';
 import searchApi from '../services/searchApi';
 import AppNav from '../components/AppNav';
 
 function Books({ onLogout }) {
+    const navigate = useNavigate();
 
     // catalogue data
     const [books, setBooks] = useState([]);
@@ -206,12 +208,12 @@ function Books({ onLogout }) {
 
                 {querySummary && (
                     <p style={styles.searchSummary}>
-                        {querySummary} &nbsp;·&nbsp; {totalResults} result{totalResults !== 1 ? 's' : ''}
-                        {totalPages > 1 && ` · page ${page + 1} / ${totalPages}`}
+                        {querySummary} &nbsp;&middot;&nbsp; {totalResults} result{totalResults !== 1 ? 's' : ''}
+                        {totalPages > 1 && ` \u00b7 page ${page + 1} / ${totalPages}`}
                     </p>
                 )}
                 {searchMode === 'direct' && (
-                    <p style={styles.fallbackNote}>Search service unavailable — showing book-service results.</p>
+                    <p style={styles.fallbackNote}>Search service unavailable &mdash; showing book-service results.</p>
                 )}
 
                 {/* Action buttons */}
@@ -269,8 +271,8 @@ function Books({ onLogout }) {
                             <div key={book.bookId} style={styles.bookCard}>
                                 <div style={styles.bookInfo}>
                                     <div>
-                                        <strong style={styles.bookTitle}>{book.title}</strong>
-                                        <p style={styles.bookMeta}>{book.author} · {book.publisher} · {book.publishYear}</p>
+                                        <strong style={{...styles.bookTitle, cursor: 'pointer', color: '#2563eb'}} onClick={() => navigate(`/books/${book.bookId}`)}>{book.title}</strong>
+                                        <p style={styles.bookMeta}>{book.author} &middot; {book.publisher} &middot; {book.publishYear}</p>
                                         <p style={styles.bookMeta}>ISBN: {book.isbn}</p>
                                     </div>
                                     <div style={styles.bookRight}>
