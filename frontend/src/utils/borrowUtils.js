@@ -8,3 +8,13 @@ export function userHasActiveLoanOnBook(borrows, bookId) {
         (b) => Number(b.bookId) === id && ON_LOAN_STATUSES.includes(b.status)
     );
 }
+
+/** Records with a fine that has not been paid (typically after return). */
+export function recordsWithUnpaidFines(records) {
+    if (!records?.length) return [];
+    return records.filter((r) => r.fine && !r.fine.isPaid);
+}
+
+export function unpaidFinesTotalEuro(records) {
+    return recordsWithUnpaidFines(records).reduce((sum, r) => sum + (r.fine?.amount || 0), 0);
+}

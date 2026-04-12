@@ -159,17 +159,23 @@ public class BorrowingService {
             .collect(Collectors.toList());
     }
 
-    // this method will be called by the OverdueScheduler to mark overdue records
-    public void markOverdueRecords() {
+    /**
+     * Marks ACTIVE/RENEWED borrows as OVERDUE when {@code dueDate} is before today.
+     * Used by {@link com.elibrary.borrowing_service.web.OverdueScheduler} and the manual maintenance endpoint.
+     *
+     * @return number of records transitioned to OVERDUE
+     */
+    public int markOverdueRecords() {
         List<BorrowRecord> candidates = borrowRecordRepository.findOverdueRecords(LocalDate.now());
 
         candidates.forEach(record -> {
-                record.markOverdue();
-                borrowRecordRepository.save(record);
-                eventPublisher.publishBookOverdue(new BookOverdueEvent(
-                    record.getRecordId(), record.getUserId(), record.getBookId(),
-                    record.getDueDate(), record.getDaysOverdue(), LocalDateTime.now()));
-            });
+            record.markOverdue();
+            borrowRecordRepository.save(record);
+            eventPublisher.publishBookOverdue(new BookOverdueEvent(
+                record.getRecordId(), record.getUserId(), record.getBookId(),
+                record.getDueDate(), record.getDaysOverdue(), LocalDateTime.now()));
+        });
+        return candidates.size();
     }
 
     // putting som ehelper methodss here that use the repositories to get the data we need

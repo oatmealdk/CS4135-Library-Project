@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import borrowingApi from '../services/borrowingApi';
 import bookApi from '../services/bookApi';
 import AppNav from '../components/AppNav';
+import { recordsWithUnpaidFines, unpaidFinesTotalEuro } from '../utils/borrowUtils';
 
 const MAX_RENEWALS = 3;
 
@@ -131,6 +132,8 @@ export default function Borrows({ onLogout }) {
     const active   = records.filter(r => r.status === 'ACTIVE' || r.status === 'RENEWED');
     const overdue  = records.filter(r => r.status === 'OVERDUE');
     const history  = records.filter(r => r.status === 'RETURNED');
+    const finesDue = recordsWithUnpaidFines(records);
+    const finesDueTotal = unpaidFinesTotalEuro(records);
 
     if (user?.role === 'ADMIN') return null;
 
@@ -153,6 +156,33 @@ export default function Borrows({ onLogout }) {
                     </div>
                 ) : (
                     <>
+                        {/* Unpaid fines (also listed under History with full detail) */}
+                        {finesDue.length > 0 && (
+                            <Section
+                                title={`Fines due (${finesDue.length})`}
+                                accent="#b45309"
+                                subtitle={
+                                    finesDueTotal > 0
+                                        ? `Total outstanding: €${finesDueTotal.toFixed(2)}`
+                                        : null
+                                }
+                            >
+                                <p style={styles.finesDueHint}>
+                                    These amounts were charged when books were returned after the due date. Pay at the library desk unless your institution uses online payment.
+                                </p>
+                                {finesDue.map(r => (
+                                    <BorrowCard
+                                        key={r.recordId}
+                                        record={r}
+                                        title={bookTitles[r.bookId]}
+                                        processing={processing}
+                                        readOnly
+                                        fineEmphasis
+                                    />
+                                ))}
+                            </Section>
+                        )}
+
                         {/* Overdue */}
                         {overdue.length > 0 && (
                             <Section title={`Overdue (${overdue.length})`} accent="#dc2626">
@@ -207,22 +237,31 @@ export default function Borrows({ onLogout }) {
     );
 }
 
-function Section({ title, accent, children }) {
+function Section({ title, accent, subtitle, children }) {
     return (
         <div style={styles.section}>
-            <h3 style={{ ...styles.sectionTitle, borderLeftColor: accent }}>{title}</h3>
+            <h3
+                style={{
+                    ...styles.sectionTitle,
+                    borderLeftColor: accent,
+                    marginBottom: subtitle ? '6px' : '12px',
+                }}
+            >
+                {title}
+            </h3>
+            {subtitle && <p style={styles.sectionSubtitle}>{subtitle}</p>}
             {children}
         </div>
     );
 }
 
-function BorrowCard({ record, title, processing, onReturn, onRenew, canRenew, readOnly }) {
+function BorrowCard({ record, title, processing, onReturn, onRenew, canRenew, readOnly, fineEmphasis }) {
     const busy = processing === record.recordId;
     const days = daysUntil(record.dueDate);
     const dueSoon = days !== null && days >= 0 && days <= 3;
 
     return (
-        <div style={styles.card}>
+        <div style={fineEmphasis ? { ...styles.card, ...styles.cardFineEmphasis } : styles.card}>
             <div style={styles.cardTop}>
                 <div style={styles.cardLeft}>
                     <Link to={`/books/${record.bookId}`} style={styles.bookTitle}>
@@ -243,8 +282,9 @@ function BorrowCard({ record, title, processing, onReturn, onRenew, canRenew, re
                         )}
                     </div>
                     {record.fine && (
-                        <div style={styles.fine}>
-                            Fine: €{record.fine.amount.toFixed(2)} &middot; {record.fine.daysOverdue}d overdue
+                        <div style={fineEmphasis ? { ...styles.fine, ...styles.fineEmphasis } : styles.fine}>
+                            <strong>{record.fine.isPaid ? 'Fine (paid)' : 'Fine due'}:</strong>{' '}
+                            €{record.fine.amount.toFixed(2)} &middot; {record.fine.daysOverdue}d past due date
                             {record.fine.isPaid ? ' · Paid' : ' · Unpaid'}
                         </div>
                     )}
@@ -293,10 +333,17 @@ const styles = {
     emptyWrap: { textAlign: 'center', paddingTop: '40px' },
     link: { color: '#2563eb', fontSize: '14px' },
 
-    section:      { marginBottom: '32px' },
-    sectionTitle: { fontSize: '16px', fontWeight: '600', color: '#333', borderLeft: '3px solid', paddingLeft: '10px', marginBottom: '12px' },
+    section:         { marginBottom: '32px' },
+    sectionTitle:    { fontSize: '16px', fontWeight: '600', color: '#333', borderLeft: '3px solid', paddingLeft: '10px' },
+    sectionSubtitle: { fontSize: '14px', fontWeight: '600', color: '#92400e', margin: '0 0 10px 10px' },
+    finesDueHint:    { fontSize: '12px', color: '#78716c', margin: '0 0 12px 0', lineHeight: 1.45 },
 
     card:    { background: '#fff', padding: '16px 20px', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '10px' },
+    cardFineEmphasis: {
+        border: '1px solid #f59e0b',
+        background: '#fffbeb',
+        boxShadow: '0 1px 6px rgba(245, 158, 11, 0.2)',
+    },
     cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' },
     cardLeft:  { flex: 1 },
     cardRight: { flexShrink: 0 },
@@ -304,7 +351,8 @@ const styles = {
     bookTitle: { fontSize: '15px', fontWeight: '600', color: '#2563eb', textDecoration: 'none', display: 'block', marginBottom: '4px' },
     meta:    { fontSize: '13px', color: '#666', lineHeight: '1.5' },
     dueSoon: { color: '#d97706', fontWeight: '600' },
-    fine:    { fontSize: '12px', color: '#dc2626', marginTop: '4px' },
+    fine:         { fontSize: '12px', color: '#dc2626', marginTop: '4px' },
+    fineEmphasis: { fontSize: '13px', color: '#92400e', marginTop: '8px' },
 
     actions:  { display: 'flex', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #f0f0f0' },
     btnReturn: { padding: '6px 16px', background: '#059669', color: '#fff', border: 'none', borderRadius: '5px', fontSize: '13px', cursor: 'pointer' },
