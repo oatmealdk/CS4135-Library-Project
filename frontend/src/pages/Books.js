@@ -4,8 +4,18 @@ import bookApi from '../services/bookApi';
 import searchApi from '../services/searchApi';
 import AppNav from '../components/AppNav';
 
+function parseUser() {
+    try {
+        return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+        return {};
+    }
+}
+
 function Books({ onLogout }) {
     const navigate = useNavigate();
+    const user = parseUser();
+    const isAdmin = user.role === 'ADMIN';
 
     // catalogue data
     const [books, setBooks] = useState([]);
@@ -216,18 +226,20 @@ function Books({ onLogout }) {
                     <p style={styles.fallbackNote}>Search service unavailable &mdash; showing book-service results.</p>
                 )}
 
-                {/* Action buttons */}
-                <div style={styles.actionRow}>
-                    <button onClick={() => setShowAddForm(!showAddForm)} style={styles.btnSuccess}>
-                        {showAddForm ? 'Cancel' : '+ Add Book'}
-                    </button>
-                    <button onClick={() => setShowCategoryForm(!showCategoryForm)} style={styles.btnPrimary}>
-                        {showCategoryForm ? 'Cancel' : '+ Add Category'}
-                    </button>
-                </div>
+                {/* Admin-only action buttons */}
+                {isAdmin && (
+                    <div style={styles.actionRow}>
+                        <button onClick={() => setShowAddForm(!showAddForm)} style={styles.btnSuccess}>
+                            {showAddForm ? 'Cancel' : '+ Add Book'}
+                        </button>
+                        <button onClick={() => setShowCategoryForm(!showCategoryForm)} style={styles.btnPrimary}>
+                            {showCategoryForm ? 'Cancel' : '+ Add Category'}
+                        </button>
+                    </div>
+                )}
 
-                {/* Add Book Form */}
-                {showAddForm && (
+                {/* Add Book Form — Admin only */}
+                {isAdmin && showAddForm && (
                     <form onSubmit={handleAddBook} style={styles.card}>
                         <h3 style={styles.cardTitle}>Add New Book</h3>
                         <div style={styles.formGrid}>
@@ -243,8 +255,8 @@ function Books({ onLogout }) {
                     </form>
                 )}
 
-                {/* Add Category Form */}
-                {showCategoryForm && (
+                {/* Add Category Form — Admin only */}
+                {isAdmin && showCategoryForm && (
                     <form onSubmit={handleAddCategory} style={styles.card}>
                         <h3 style={styles.cardTitle}>Add New Category</h3>
                         <div style={styles.formRow}>
@@ -286,11 +298,15 @@ function Books({ onLogout }) {
                                         <span style={styles.copies}>{book.availableCopies} / {book.totalCopies} available</span>
                                     </div>
                                 </div>
-                                <div style={styles.bookActions}>
-                                    <button onClick={() => handleDecrement(book.bookId)} disabled={book.availableCopies <= 0 || book.status === 'REMOVED'} style={styles.btnSmallWarn}>Borrow</button>
-                                    <button onClick={() => handleIncrement(book.bookId)} disabled={book.availableCopies >= book.totalCopies || book.status === 'REMOVED'} style={styles.btnSmallSuccess}>Return</button>
-                                    <button onClick={() => handleRemove(book.bookId)} disabled={book.status === 'REMOVED'} style={styles.btnSmallDanger}>Remove</button>
-                                </div>
+
+                                {/* Admin-only actions on each book */}
+                                {isAdmin && (
+                                    <div style={styles.bookActions}>
+                                        <button onClick={() => handleDecrement(book.bookId)} disabled={book.availableCopies <= 0 || book.status === 'REMOVED'} style={styles.btnSmallWarn}>Borrow</button>
+                                        <button onClick={() => handleIncrement(book.bookId)} disabled={book.availableCopies >= book.totalCopies || book.status === 'REMOVED'} style={styles.btnSmallSuccess}>Return</button>
+                                        <button onClick={() => handleRemove(book.bookId)} disabled={book.status === 'REMOVED'} style={styles.btnSmallDanger}>Remove</button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
