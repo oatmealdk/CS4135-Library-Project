@@ -280,13 +280,29 @@ class BorrowingServiceTest {
         ReflectionTestUtils.setField(fine, "fineId", 7L);
 
         when(borrowRecordRepository.findById(42L)).thenReturn(Optional.of(record));
-        when(fineRepository.findByRecordIdAndIsPaidFalse(42L)).thenReturn(Optional.of(fine));
+        when(fineRepository.findFirstByRecordIdOrderByIssuedAtDesc(42L)).thenReturn(Optional.of(fine));
 
         BorrowRecordDTO dto = borrowingService.getBorrowRecord(42L);
 
         assertNotNull(dto.getFine());
         assertEquals(1.50, dto.getFine().amount(), 0.001);
         assertFalse(dto.getFine().isPaid());
+    }
+
+    @Test
+    void getBorrowRecord_includesPaidFineInHistory() {
+        BorrowRecord record = savedRecord(42L, 1L, 100L);
+        Fine fine = Fine.create(42L, 1L, 2);
+        ReflectionTestUtils.setField(fine, "fineId", 8L);
+        fine.markAsPaid();
+
+        when(borrowRecordRepository.findById(42L)).thenReturn(Optional.of(record));
+        when(fineRepository.findFirstByRecordIdOrderByIssuedAtDesc(42L)).thenReturn(Optional.of(fine));
+
+        BorrowRecordDTO dto = borrowingService.getBorrowRecord(42L);
+
+        assertNotNull(dto.getFine());
+        assertTrue(dto.getFine().isPaid());
     }
 
     @Test

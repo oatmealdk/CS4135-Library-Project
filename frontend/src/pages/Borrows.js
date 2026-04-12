@@ -268,6 +268,10 @@ function BorrowCard({ record, title, processing, onReturn, onRenew, canRenew, re
                         {title || `Book #${record.bookId}`}
                     </Link>
                     <div style={styles.meta}>
+                        <span style={styles.recordIdLine}>
+                            Borrow record ID: {record.recordId}
+                        </span>
+                        <br />
                         Borrowed: {formatDate(record.borrowDate)}
                         &nbsp;&middot;&nbsp;
                         Due: <span style={dueSoon && !readOnly ? styles.dueSoon : undefined}>
@@ -349,6 +353,7 @@ const styles = {
     cardRight: { flexShrink: 0 },
 
     bookTitle: { fontSize: '15px', fontWeight: '600', color: '#2563eb', textDecoration: 'none', display: 'block', marginBottom: '4px' },
+    recordIdLine: { fontSize: '12px', color: '#888', fontFamily: 'ui-monospace, monospace' },
     meta:    { fontSize: '13px', color: '#666', lineHeight: '1.5' },
     dueSoon: { color: '#d97706', fontWeight: '600' },
     fine:         { fontSize: '12px', color: '#dc2626', marginTop: '4px' },

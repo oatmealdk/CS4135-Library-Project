@@ -9,7 +9,7 @@ import java.time.LocalDate;
 /**
  * DTO for all BorrowRecord responses.
  *
- * fine is null unless the return triggered a fine (INV-B2).
+ * fine is null unless a fine exists for this loan (INV-B2); includes paid fines so patrons see history.
  */
 public class BorrowRecordDTO {
 

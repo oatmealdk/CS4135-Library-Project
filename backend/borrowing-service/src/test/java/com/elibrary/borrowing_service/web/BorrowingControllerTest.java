@@ -168,4 +168,38 @@ class BorrowingControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1));
     }
+
+    // PUT /api/borrows/maintenance/{recordId}/due-date
+
+    @Test
+    void adminTestingSetDueDate_returns200() throws Exception {
+        BorrowRecordDTO dto = testDTO();
+        when(borrowingService.adminTestingSetDueDate(eq(42L), any()))
+            .thenReturn(dto);
+
+        mockMvc.perform(put("/api/borrows/maintenance/42/due-date")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dueDate\":\"2026-01-15\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.recordId").value(42));
+    }
+
+    @Test
+    void adminTestingSetDueDate_returns400WhenBodyInvalid() throws Exception {
+        mockMvc.perform(put("/api/borrows/maintenance/42/due-date")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminTestingSetDueDate_returns422WhenNotActiveOrRenewed() throws Exception {
+        when(borrowingService.adminTestingSetDueDate(eq(42L), any()))
+            .thenThrow(new IllegalStateException("Due date can only be adjusted for ACTIVE or RENEWED borrows"));
+
+        mockMvc.perform(put("/api/borrows/maintenance/42/due-date")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"dueDate\":\"2026-01-15\"}"))
+            .andExpect(status().is(422));
+    }
 }

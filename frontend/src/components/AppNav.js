@@ -63,6 +63,16 @@ function AppNav({ onLogout }) {
                 <NavLink to="/books" style={navLinkStyle} end>
                     Books
                 </NavLink>
+                {user?.role === 'ADMIN' && (
+                    <>
+                        <NavLink to="/admin/fines" style={navLinkStyle} end>
+                            Fines
+                        </NavLink>
+                        <NavLink to="/admin/testing" style={navLinkStyle} end>
+                            Testing
+                        </NavLink>
+                    </>
+                )}
                 {user?.role !== 'ADMIN' && (
                     <NavLink to="/borrows" style={navLinkStyle} end>
                         Borrows
