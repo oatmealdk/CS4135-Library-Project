@@ -3,6 +3,7 @@ package com.elibrary.borrowing_service.web;
 import com.elibrary.borrowing_service.application.BorrowingService;
 import com.elibrary.borrowing_service.application.dto.BorrowRecordDTO;
 import com.elibrary.borrowing_service.application.dto.BorrowRequest;
+import com.elibrary.borrowing_service.application.dto.RunOverdueCheckResult;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +15,13 @@ import java.util.List;
  * REST controller for the Borrowing context's published language in DDD section 1.
  *
  * Endpoints implemented to match our API contracts defined in the first DDD stage:
- *   POST   /api/borrows                       -> borrow a book
- *   PUT    /api/borrows/{recordId}/return     -> return a book
- *   PUT    /api/borrows/{recordId}/renew      -> renew a book
- *   GET    /api/borrows/user/{userId}         -> get all borrows for a user
- *   GET    /api/borrows/{recordId}            -> get a single borrow record
- *   GET    /api/borrows/book/{bookId}/active  -> active borrows for a book (used by book-service, INV-C2)
+ *   POST   /api/borrows                                -> borrow a book
+ *   PUT    /api/borrows/{recordId}/return              -> return a book
+ *   PUT    /api/borrows/{recordId}/renew               -> renew a book
+ *   GET    /api/borrows/user/{userId}                  -> get all borrows for a user
+ *   GET    /api/borrows/{recordId}                     -> get a single borrow record
+ *   GET    /api/borrows/book/{bookId}/active           -> active borrows for a book (used by book-service, INV-C2)
+ *   POST   /api/borrows/maintenance/run-overdue-check  -> manual overdue job (same as daily scheduler)
  */
 @RestController
 @RequestMapping("/api/borrows")
@@ -60,6 +62,16 @@ public class BorrowingController {
     @GetMapping("/book/{bookId}/active")
     public ResponseEntity<List<BorrowRecordDTO>> getActiveBorrowsByBook(@PathVariable Long bookId) {
         return ResponseEntity.ok(borrowingService.getActiveBorrowsByBook(bookId));
+    }
+
+    /**
+     * Manual trigger for the same overdue pass as the daily 01:00 scheduler (dev / QA).
+     * Does not create fines; those apply on return via {@code PUT /{recordId}/return}.
+     */
+    @PostMapping("/maintenance/run-overdue-check")
+    public ResponseEntity<RunOverdueCheckResult> runOverdueCheck() {
+        int n = borrowingService.markOverdueRecords();
+        return ResponseEntity.ok(new RunOverdueCheckResult(n));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
