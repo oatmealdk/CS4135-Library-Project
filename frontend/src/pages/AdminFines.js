@@ -32,6 +32,39 @@ function normalizeFinesList(payload) {
     return [];
 }
 
+function normalizeOverdueList(payload) {
+    if (!Array.isArray(payload)) return [];
+    return payload
+        .filter((r) => r && typeof r === 'object')
+        .map((r) => ({
+            patronName: r.patronName ?? '—',
+            patronEmail: r.patronEmail ?? '—',
+            bookTitle: r.bookTitle ?? '—',
+            bookAuthor: r.bookAuthor ?? '—',
+            bookIsbn: r.bookIsbn ?? '—',
+            borrowDate: r.borrowDate,
+            dueDate: r.dueDate,
+            renewCount: r.renewCount ?? 0,
+            status: r.status,
+        }));
+}
+
+function formatDateOnly(value) {
+    if (!value) return '—';
+    if (Array.isArray(value)) {
+        const [y, mo, d] = value;
+        if (!y || !mo || !d) return '—';
+        return new Date(y, mo - 1, d).toLocaleDateString();
+    }
+    const s = String(value);
+    if (s.includes('T')) {
+        const dt = new Date(s);
+        return Number.isNaN(dt.getTime()) ? s : dt.toLocaleDateString();
+    }
+    const dt = new Date(`${s}T00:00:00`);
+    return Number.isNaN(dt.getTime()) ? s : dt.toLocaleDateString();
+}
+
 function formatDt(val) {
     if (!val) return '—';
     if (Array.isArray(val)) {
@@ -49,6 +82,7 @@ function formatDt(val) {
 export default function AdminFines({ onLogout }) {
     const navigate = useNavigate();
     const [fines, setFines] = useState([]);
+    const [overdueRecords, setOverdueRecords] = useState([]);
     const [initialLoad, setInitialLoad] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState('');
@@ -77,15 +111,21 @@ export default function AdminFines({ onLogout }) {
         }
 
         try {
-            const res = await borrowingApi.get('/fines');
-            const list = normalizeFinesList(res.data);
+            const [finesRes, overdueRes] = await Promise.all([
+                borrowingApi.get('/fines'),
+                borrowingApi.get('/borrows/admin/overdue'),
+            ]);
+            const list = normalizeFinesList(finesRes.data);
+            const overdueList = normalizeOverdueList(overdueRes.data);
             if (mountedRef.current) {
                 setFines(list);
+                setOverdueRecords(overdueList);
             }
         } catch {
             if (mountedRef.current) {
                 setError('Could not load fines. Is borrowing-service running?');
                 setFines([]);
+                setOverdueRecords([]);
             }
         } finally {
             if (mountedRef.current) {
@@ -237,6 +277,50 @@ export default function AdminFines({ onLogout }) {
                         </table>
                     </div>
                 )}
+
+                <h3 style={styles.subTitle}>Overdue Books (not yet returned)</h3>
+                <p style={styles.leadSmall}>
+                    These loans are currently overdue and still active, so no fine is issued yet. Fine is calculated on return.
+                </p>
+                {initialLoad ? (
+                    <p style={styles.muted}>Loading…</p>
+                ) : overdueRecords.length === 0 ? (
+                    <p style={styles.muted}>No currently overdue active loans.</p>
+                ) : (
+                    <div style={styles.overdueWrap}>
+                        <table style={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th style={{ ...styles.th, ...styles.thWide }}>Patron</th>
+                                    <th style={{ ...styles.th, ...styles.thWide }}>Book</th>
+                                    <th style={styles.th}>Borrowed</th>
+                                    <th style={styles.th}>Due</th>
+                                    <th style={styles.th}>Renewals</th>
+                                    <th style={styles.th}>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {overdueRecords.map((r, idx) => (
+                                    <tr key={`${r.patronEmail}-${r.bookIsbn}-${r.dueDate}-${idx}`}>
+                                        <td style={styles.td}>
+                                            <div style={styles.patronName}>{r.patronName}</div>
+                                            <div style={styles.mutedSmall}>{r.patronEmail}</div>
+                                        </td>
+                                        <td style={styles.td}>
+                                            <div style={styles.bookTitle}>{r.bookTitle}</div>
+                                            <div style={styles.mutedSmall}>{r.bookAuthor}</div>
+                                            <div style={styles.isbnLine}>ISBN {r.bookIsbn}</div>
+                                        </td>
+                                        <td style={styles.td}>{formatDateOnly(r.borrowDate)}</td>
+                                        <td style={styles.td}>{formatDateOnly(r.dueDate)}</td>
+                                        <td style={styles.td}>{r.renewCount}</td>
+                                        <td style={styles.td}><span style={styles.badgeUnpaid}>{r.status}</span></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -246,7 +330,9 @@ const styles = {
     page: { minHeight: '100vh', background: '#f5f5f5', display: 'flex', flexDirection: 'column' },
     body: { padding: '32px', maxWidth: '1100px', margin: '0 auto', flex: 1, width: '100%', boxSizing: 'border-box' },
     title: { fontSize: '24px', marginBottom: '8px', color: '#111' },
+    subTitle: { fontSize: '20px', marginTop: '28px', marginBottom: '8px', color: '#111' },
     lead: { fontSize: '14px', color: '#555', marginBottom: '20px', lineHeight: 1.5, maxWidth: '640px' },
+    leadSmall: { fontSize: '13px', color: '#666', marginBottom: '12px', lineHeight: 1.5 },
 
     error: { color: '#dc2626', fontSize: '13px', marginBottom: '12px', padding: '10px', background: '#fee2e2', borderRadius: '6px' },
     success: { color: '#059669', fontSize: '13px', marginBottom: '12px', padding: '10px', background: '#d1fae5', borderRadius: '6px' },
@@ -287,6 +373,7 @@ const styles = {
     },
 
     tableWrap: { overflowX: 'auto', background: '#fff', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' },
+    overdueWrap: { overflowX: 'auto', background: '#fff', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', marginBottom: '8px' },
     table: { width: '100%', borderCollapse: 'collapse', fontSize: '13px' },
     th: {
         textAlign: 'left',
