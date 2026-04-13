@@ -88,9 +88,12 @@ function Books({ onLogout }) {
         setLoading(true);
         setError('');
         const params = { page: targetPage, size: pageSize };
-        if (searchTitle.trim()) params.title = searchTitle.trim();
-        if (searchAuthor.trim()) params.author = searchAuthor.trim();
-        if (searchKeyword.trim()) params.keyword = searchKeyword.trim();
+        const tTitle = searchTitle.trim();
+        const tAuthor = searchAuthor.trim();
+        const tKeyword = searchKeyword.trim();
+        if (tTitle) params.title = tTitle;
+        if (tAuthor) params.author = tAuthor;
+        if (tKeyword) params.keyword = tKeyword;
         if (searchCategoryId) params.categoryId = Number(searchCategoryId);
         if (searchStatus) params.status = searchStatus;
         if (searchYearFrom) params.publishYearFrom = Number(searchYearFrom);
@@ -106,7 +109,7 @@ function Books({ onLogout }) {
             setSearchMode('search');
         } catch (err) {
             // search-service unavailable - fall back to book-service direct listing
-            await fetchBooksDirect(searchTitle);
+            await fetchBooksDirect(searchTitle.trim());
         }
         setLoading(false);
     };
@@ -116,7 +119,8 @@ function Books({ onLogout }) {
         setSearchMode('direct');
         setError('');
         try {
-            const params = title ? { title } : {};
+            const t = (title || '').trim();
+            const params = t ? { title: t } : {};
             const res = await bookApi.get('/books', { params });
             setBooks(res.data.content || []);
             setTotalPages(0);
@@ -155,12 +159,13 @@ function Books({ onLogout }) {
     };
 
     const loadTitleSuggestions = async (query) => {
-        if (!query || query.trim().length < 2) {
+        const q = (query || '').trim();
+        if (!q || q.length < 2) {
             setTitleSuggestions([]);
             return;
         }
         try {
-            const res = await searchApi.get('/api/search/suggestions', { params: { q: query.trim() } });
+            const res = await searchApi.get('/api/search/suggestions', { params: { q } });
             setTitleSuggestions(Array.isArray(res.data) ? res.data : []);
         } catch {
             setTitleSuggestions([]);

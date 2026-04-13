@@ -9,6 +9,7 @@ import Borrows from './pages/Borrows';
 import AdminFines from './pages/AdminFines';
 import AdminTesting from './pages/AdminTesting';
 import UserSettings from './pages/UserSettings';
+import Notifications from './pages/Notifications';
 import api from './services/api';
 import { getToken, clearSession } from './services/auth';
 
@@ -76,6 +77,7 @@ function App() {
                 <Route path="/books/:bookId" element={loggedIn ? <BookDetail onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="/borrows" element={loggedIn ? <Borrows onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="/account" element={loggedIn ? <UserSettings onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
+                <Route path="/notifications" element={loggedIn ? <Notifications onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="/admin/fines" element={loggedIn ? <AdminFines onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="/admin/testing" element={loggedIn ? <AdminTesting onLogout={() => setLoggedIn(false)} /> : <Navigate to="/login" />} />
                 <Route path="*" element={<Navigate to="/login" />} />

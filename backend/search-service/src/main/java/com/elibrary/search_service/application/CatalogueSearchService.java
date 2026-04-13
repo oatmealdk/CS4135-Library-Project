@@ -12,9 +12,11 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
@@ -43,13 +45,20 @@ public class CatalogueSearchService {
             int page,
             int size) {
 
+        title = normalizeQueryTerm(title);
+        author = normalizeQueryTerm(author);
+        keyword = normalizeQueryTerm(keyword);
+
+        // Keyword-only searches fetch via title filter on book-service (first page), then filter in memory.
+        String titleForBooks = title != null ? title : keyword;
+
         UriComponentsBuilder b = UriComponentsBuilder
             .fromUriString(BOOK_SERVICE + "/api/books")
             .queryParam("page", page)
             .queryParam("size", size);
 
-        if (title != null && !title.isBlank()) b.queryParam("title", title.trim());
-        if (author != null && !author.isBlank()) b.queryParam("author", author.trim());
+        if (titleForBooks != null) b.queryParam("title", titleForBooks);
+        if (author != null) b.queryParam("author", author);
         if (categoryId != null) b.queryParam("categoryId", categoryId);
         if (status != null && !status.isBlank()) b.queryParam("status", status.trim());
         if (publishYearFrom != null) b.queryParam("publishYearFrom", publishYearFrom);
@@ -63,10 +72,10 @@ public class CatalogueSearchService {
         }
 
         List<BookCatalogueDto> rows = body.getContent();
-        if (keyword != null && !keyword.isBlank()) {
-            String k = keyword.toLowerCase();
+        if (keyword != null) {
+            String needle = foldWhitespace(keyword.toLowerCase(Locale.ROOT));
             rows = rows.stream()
-                .filter(book -> matchesKeyword(book, k))
+                .filter(book -> matchesKeyword(book, needle))
                 .collect(Collectors.toList());
         }
 
@@ -76,27 +85,58 @@ public class CatalogueSearchService {
             rows,
             body.getPage(),
             body.getSize(),
-            keyword != null && !keyword.isBlank() ? rows.size() : body.getTotalElements(),
+            keyword != null ? rows.size() : body.getTotalElements(),
             body.getTotalPages(),
             LocalDateTime.now());
     }
 
-    private static boolean matchesKeyword(BookCatalogueDto book, String k) {
-        return (book.getTitle() != null && book.getTitle().toLowerCase().contains(k))
-            || (book.getAuthor() != null && book.getAuthor().toLowerCase().contains(k))
-            || (book.getDescription() != null && book.getDescription().toLowerCase().contains(k));
+    private static String foldWhitespace(String s) {
+        if (s == null) {
+            return "";
+        }
+        return Normalizer.normalize(
+            s.replace('\u00A0', ' ')
+                .replace('\u2007', ' ')
+                .replace('\u202F', ' ')
+                .trim()
+                .replaceAll("\\s+", " "),
+            Normalizer.Form.NFC
+        );
+    }
+
+    private static boolean matchesKeyword(BookCatalogueDto book, String needle) {
+        return foldWhitespace(book.getTitle()).toLowerCase(Locale.ROOT).contains(needle)
+            || foldWhitespace(book.getAuthor()).toLowerCase(Locale.ROOT).contains(needle)
+            || foldWhitespace(book.getDescription()).toLowerCase(Locale.ROOT).contains(needle);
     }
 
     private static String buildSummary(String title, String author, String keyword) {
         List<String> parts = new ArrayList<>();
-        if (title != null && !title.isBlank()) parts.add("title=" + title);
-        if (author != null && !author.isBlank()) parts.add("author=" + author);
-        if (keyword != null && !keyword.isBlank()) parts.add("keyword=" + keyword);
+        if (title != null) parts.add("title=" + title);
+        if (author != null) parts.add("author=" + author);
+        if (keyword != null) parts.add("keyword=" + keyword);
         return parts.isEmpty() ? "browse" : String.join(", ", parts);
     }
 
+    private static String normalizeQueryTerm(String value) {
+        if (value == null) {
+            return null;
+        }
+        String collapsed = Normalizer.normalize(
+            value
+                .replace('\u00A0', ' ')
+                .replace('\u2007', ' ')
+                .replace('\u202F', ' ')
+                .trim()
+                .replaceAll("\\s+", " "),
+            Normalizer.Form.NFC
+        );
+        return collapsed.isEmpty() ? null : collapsed;
+    }
+
     public List<String> suggest(String q) {
-        if (q == null || q.isBlank()) {
+        q = normalizeQueryTerm(q);
+        if (q == null) {
             return List.of();
         }
         SearchResultDto result = search(q, null, null, null, null, null, null, 0, 10);

@@ -5,6 +5,8 @@ import com.elibrary.notification_service.domain.model.NotificationType;
 import com.elibrary.notification_service.domain.repository.NotificationRepository;
 import com.elibrary.notification_service.integration.dto.BookBorrowedMessage;
 import com.elibrary.notification_service.integration.dto.BookOverdueMessage;
+import com.elibrary.notification_service.integration.dto.BookRenewedMessage;
+import com.elibrary.notification_service.integration.dto.BookReturnedMessage;
 import com.elibrary.notification_service.integration.dto.FineAppliedMessage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +15,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -21,6 +27,9 @@ class NotificationDispatchServiceTest {
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private DueReminderScheduleService dueReminderScheduleService;
 
     @InjectMocks
     private NotificationDispatchService notificationDispatchService;
@@ -30,6 +39,7 @@ class NotificationDispatchServiceTest {
         BookBorrowedMessage message = new BookBorrowedMessage();
         message.setUserId(5L);
         message.setRecordId(77L);
+        message.setDueDate(LocalDate.of(2026, 8, 15));
 
         notificationDispatchService.handleBorrowed(message);
 
@@ -39,6 +49,32 @@ class NotificationDispatchServiceTest {
         assertEquals(NotificationType.BOOK_BORROWED, saved.getType());
         assertEquals("PENDING", saved.getStatus());
         assertEquals("Book borrowed: record 77", saved.getMessage());
+        verify(dueReminderScheduleService).scheduleRemindersForBorrow(eq(5L), eq(77L), eq(LocalDate.of(2026, 8, 15)));
+    }
+
+    @Test
+    void handleReturned_cancelsPendingSchedules() {
+        BookReturnedMessage message = new BookReturnedMessage();
+        message.setUserId(9L);
+        message.setRecordId(55L);
+
+        notificationDispatchService.handleReturned(message);
+
+        verify(dueReminderScheduleService).cancelPendingForRecord(55L);
+        verify(notificationRepository).save(any(Notification.class));
+    }
+
+    @Test
+    void handleRenewed_reschedulesReminders() {
+        BookRenewedMessage message = new BookRenewedMessage();
+        message.setUserId(3L);
+        message.setRecordId(88L);
+        message.setNewDueDate(LocalDate.of(2026, 9, 1));
+
+        notificationDispatchService.handleRenewed(message);
+
+        verify(dueReminderScheduleService).rescheduleAfterRenew(eq(3L), eq(88L), eq(LocalDate.of(2026, 9, 1)));
+        verify(notificationRepository).save(any(Notification.class));
     }
 
     @Test
