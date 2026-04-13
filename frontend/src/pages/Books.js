@@ -35,6 +35,11 @@ function Books({ onLogout }) {
     const [searchTitle, setSearchTitle] = useState('');
     const [searchAuthor, setSearchAuthor] = useState('');
     const [searchKeyword, setSearchKeyword] = useState('');
+    const [searchCategoryId, setSearchCategoryId] = useState('');
+    const [searchStatus, setSearchStatus] = useState('');
+    const [searchYearFrom, setSearchYearFrom] = useState('');
+    const [searchYearTo, setSearchYearTo] = useState('');
+    const [titleSuggestions, setTitleSuggestions] = useState([]);
     const [page, setPage] = useState(0);
     const [pageSize] = useState(20);
     const [totalPages, setTotalPages] = useState(0);
@@ -86,6 +91,10 @@ function Books({ onLogout }) {
         if (searchTitle.trim()) params.title = searchTitle.trim();
         if (searchAuthor.trim()) params.author = searchAuthor.trim();
         if (searchKeyword.trim()) params.keyword = searchKeyword.trim();
+        if (searchCategoryId) params.categoryId = Number(searchCategoryId);
+        if (searchStatus) params.status = searchStatus;
+        if (searchYearFrom) params.publishYearFrom = Number(searchYearFrom);
+        if (searchYearTo) params.publishYearTo = Number(searchYearTo);
         try {
             const res = await searchApi.get('/api/search', { params });
             const data = res.data;
@@ -135,9 +144,27 @@ function Books({ onLogout }) {
         setSearchTitle('');
         setSearchAuthor('');
         setSearchKeyword('');
+        setSearchCategoryId('');
+        setSearchStatus('');
+        setSearchYearFrom('');
+        setSearchYearTo('');
+        setTitleSuggestions([]);
         setQuerySummary('');
         setTotalResults(null);
         runSearch(0);
+    };
+
+    const loadTitleSuggestions = async (query) => {
+        if (!query || query.trim().length < 2) {
+            setTitleSuggestions([]);
+            return;
+        }
+        try {
+            const res = await searchApi.get('/api/search/suggestions', { params: { q: query.trim() } });
+            setTitleSuggestions(Array.isArray(res.data) ? res.data : []);
+        } catch {
+            setTitleSuggestions([]);
+        }
     };
 
     const handleAddBook = async (e) => {
@@ -219,9 +246,19 @@ function Books({ onLogout }) {
                         type="text"
                         placeholder="Title"
                         value={searchTitle}
-                        onChange={(e) => setSearchTitle(e.target.value)}
+                        onChange={(e) => {
+                            const nextTitle = e.target.value;
+                            setSearchTitle(nextTitle);
+                            loadTitleSuggestions(nextTitle);
+                        }}
+                        list="book-title-suggestions"
                         style={styles.searchInput}
                     />
+                    <datalist id="book-title-suggestions">
+                        {titleSuggestions.map((title) => (
+                            <option key={title} value={title} />
+                        ))}
+                    </datalist>
                     <input
                         type="text"
                         placeholder="Author"
@@ -236,8 +273,42 @@ function Books({ onLogout }) {
                         onChange={(e) => setSearchKeyword(e.target.value)}
                         style={styles.searchInput}
                     />
-                    <button type="submit" style={styles.btnPrimary}>Search</button>
-                    <button type="button" onClick={handleClearSearch} style={styles.btnSecondary}>Clear</button>
+                    <select
+                        value={searchCategoryId}
+                        onChange={(e) => setSearchCategoryId(e.target.value)}
+                        style={styles.searchInput}
+                    >
+                        <option value="">All categories</option>
+                        {categories.map((c) => (
+                            <option key={c.categoryId} value={c.categoryId}>{c.name}</option>
+                        ))}
+                    </select>
+                    <select
+                        value={searchStatus}
+                        onChange={(e) => setSearchStatus(e.target.value)}
+                        style={styles.searchInput}
+                    >
+                        <option value="">Any status</option>
+                        <option value="AVAILABLE">AVAILABLE</option>
+                        <option value="BORROWED">BORROWED</option>
+                        <option value="REMOVED">REMOVED</option>
+                    </select>
+                    <input
+                        type="number"
+                        placeholder="Year from"
+                        value={searchYearFrom}
+                        onChange={(e) => setSearchYearFrom(e.target.value)}
+                        style={styles.searchInput}
+                    />
+                    <input
+                        type="number"
+                        placeholder="Year to"
+                        value={searchYearTo}
+                        onChange={(e) => setSearchYearTo(e.target.value)}
+                        style={styles.searchInput}
+                    />
+                    <button type="submit" style={{ ...styles.btnPrimary, ...styles.searchActionBtn }}>Search</button>
+                    <button type="button" onClick={handleClearSearch} style={{ ...styles.btnSecondary, ...styles.searchActionBtn }}>Clear</button>
                 </form>
 
                 {querySummary && (
@@ -389,7 +460,14 @@ const styles = {
     searchSummary: { fontSize: '13px', color: '#555', marginBottom: '16px' },
     fallbackNote: { fontSize: '12px', color: '#9a3412', background: '#fff7ed', padding: '6px 10px', borderRadius: '4px', marginBottom: '12px' },
 
-    searchGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto auto', gap: '10px', marginBottom: '16px', alignItems: 'center' },
+    searchGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+        gap: '10px',
+        marginBottom: '16px',
+        alignItems: 'center'
+    },
+    searchActionBtn: { width: '100%', minWidth: 0 },
     searchInput: { padding: '10px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' },
 
     actionRow: { display: 'flex', gap: '10px', marginBottom: '20px' },

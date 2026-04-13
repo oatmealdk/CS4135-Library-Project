@@ -2,6 +2,8 @@ package com.elibrary.borrowing_service.web;
 
 import com.elibrary.borrowing_service.application.BorrowingService;
 import com.elibrary.borrowing_service.application.dto.BorrowRecordDTO;
+import com.elibrary.borrowing_service.application.dto.OverdueAdminDTO;
+import com.elibrary.borrowing_service.domain.model.BorrowStatus;
 import com.elibrary.borrowing_service.domain.model.BorrowRecord;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -167,6 +170,29 @@ class BorrowingControllerTest {
         mockMvc.perform(get("/api/borrows/book/100/active"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void getCurrentOverdueBorrows_returnsList() throws Exception {
+        when(borrowingService.getCurrentOverdueBorrows()).thenReturn(List.of(
+            new OverdueAdminDTO(
+                "Alex Admin",
+                "alex@ul.ie",
+                "Clean Architecture",
+                "Robert C. Martin",
+                "9780134494166",
+                LocalDate.now().minusDays(8),
+                LocalDate.now().minusDays(1),
+                1,
+                BorrowStatus.OVERDUE
+            )
+        ));
+
+        mockMvc.perform(get("/api/borrows/admin/overdue"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].patronName").value("Alex Admin"))
+            .andExpect(jsonPath("$[0].bookTitle").value("Clean Architecture"));
     }
 
     // PUT /api/borrows/maintenance/{recordId}/due-date
