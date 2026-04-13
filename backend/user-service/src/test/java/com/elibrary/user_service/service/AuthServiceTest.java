@@ -30,6 +30,9 @@ class AuthServiceTest {
     @Mock
     private JwtUtil jwtUtil;
 
+    @Mock
+    private TokenRevocationService tokenRevocationService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -81,5 +84,15 @@ class AuthServiceTest {
     void getCurrentUser_throwsForMissingBearerHeader() {
         RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.getCurrentUser("bad-token"));
         assertEquals("Missing or invalid token", ex.getMessage());
+    }
+
+    @Test
+    void validate_throwsWhenTokenIsRevoked() {
+        when(jwtUtil.isTokenValid("valid-token")).thenReturn(true);
+        when(jwtUtil.extractTokenId("valid-token")).thenReturn("token-id");
+        when(tokenRevocationService.isRevoked("token-id")).thenReturn(true);
+
+        RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.validate("Bearer valid-token"));
+        assertEquals("Token has been revoked", ex.getMessage());
     }
 }

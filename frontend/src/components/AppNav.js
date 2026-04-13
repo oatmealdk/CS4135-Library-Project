@@ -1,23 +1,21 @@
 import React from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-
-function parseUser() {
-    try {
-        return JSON.parse(localStorage.getItem('user') || 'null');
-    } catch {
-        return null;
-    }
-}
+import api from '../services/api';
+import { clearSession, parseUser, getToken } from '../services/auth';
 
 function AppNav({ onLogout }) {
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const user = parseUser();
-    const hasToken = !!localStorage.getItem('token');
+    const hasToken = !!getToken();
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+    const logout = async () => {
+        try {
+            await api.post('/auth/logout');
+        } catch (error) {
+            // Ignore logout API failures and clear local state anyway.
+        }
+        clearSession();
         if (onLogout) onLogout();
         navigate('/login');
     };
@@ -82,7 +80,9 @@ function AppNav({ onLogout }) {
             <div style={styles.userInfo}>
                 {user && (
                     <>
-                        <span style={styles.name}>{user.name}</span>
+                        <Link to="/account" style={styles.nameLink}>
+                            <span style={styles.name}>{user.name}</span>
+                        </Link>
                         <span style={styles.role}>{user.role}</span>
                     </>
                 )}
@@ -113,6 +113,7 @@ const styles = {
     navLink: { fontSize: '14px', color: '#666', cursor: 'pointer', textDecoration: 'none' },
     navActive: { color: '#2563eb', fontWeight: '600', cursor: 'default' },
     userInfo: { display: 'flex', alignItems: 'center', gap: '16px' },
+    nameLink: { textDecoration: 'none' },
     name: { fontSize: '14px', color: '#333' },
     role: {
         fontSize: '11px',

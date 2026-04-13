@@ -1,15 +1,10 @@
 import axios from 'axios';
+import { setupAuthInterceptor } from './auth';
 
 const searchApi = axios.create({
     baseURL: 'http://localhost:8085'
 });
 
-searchApi.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+setupAuthInterceptor(searchApi);
 
 export default searchApi;

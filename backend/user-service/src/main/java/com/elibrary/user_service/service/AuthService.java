@@ -5,6 +5,7 @@ import com.elibrary.user_service.dto.AuthResponse;
 import com.elibrary.user_service.dto.RegisterRequest;
 import com.elibrary.user_service.entity.Role;
 import com.elibrary.user_service.entity.User;
+import com.elibrary.user_service.exception.UnauthorizedException;
 import com.elibrary.user_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -19,6 +20,9 @@ public class AuthService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private TokenRevocationService tokenRevocationService;
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -66,18 +70,58 @@ public class AuthService {
     }
 
     public AuthResponse getCurrentUser(String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("Missing or invalid token");
-        }
-
-        String token = authHeader.substring(7);
-        String email = jwtUtil.extractEmail(token);
-
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        String token = extractValidatedToken(authHeader);
+        User user = getUserFromToken(token);
 
         return new AuthResponse(user.getId(), user.getName(),
                 user.getEmail(), user.getRole(), token, "Authenticated");
+    }
+
+    public void logout(String authHeader) {
+        revokeToken(authHeader);
+    }
+
+    public void validate(String authHeader) {
+        extractValidatedToken(authHeader);
+    }
+
+    public User getAuthenticatedUser(String authHeader) {
+        String token = extractValidatedToken(authHeader);
+        return getUserFromToken(token);
+    }
+
+    public void revokeToken(String authHeader) {
+        String token = extractValidatedToken(authHeader);
+        tokenRevocationService.revoke(jwtUtil.extractTokenId(token), jwtUtil.extractExpiration(token));
+    }
+
+    private String extractBearerToken(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new UnauthorizedException("Missing or invalid token");
+        }
+        return authHeader.substring(7);
+    }
+
+    private void validateTokenOrThrow(String token) {
+        if (!jwtUtil.isTokenValid(token)) {
+            throw new UnauthorizedException("Token is invalid or expired");
+        }
+        String tokenId = jwtUtil.extractTokenId(token);
+        if (tokenRevocationService.isRevoked(tokenId)) {
+            throw new UnauthorizedException("Token has been revoked");
+        }
+    }
+
+    private String extractValidatedToken(String authHeader) {
+        String token = extractBearerToken(authHeader);
+        validateTokenOrThrow(token);
+        return token;
+    }
+
+    private User getUserFromToken(String token) {
+        String email = jwtUtil.extractEmail(token);
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
 }

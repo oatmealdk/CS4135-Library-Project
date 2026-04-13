@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -30,5 +32,17 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<AuthResponse> me(@RequestHeader("Authorization") String authHeader) {
         return ResponseEntity.ok(authService.getCurrentUser(authHeader));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(@RequestHeader("Authorization") String authHeader) {
+        authService.logout(authHeader);
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
+    }
+
+    @GetMapping("/validate")
+    public ResponseEntity<Map<String, String>> validate(@RequestHeader("Authorization") String authHeader) {
+        authService.validate(authHeader);
+        return ResponseEntity.ok(Map.of("message", "Token is valid"));
     }
 }
