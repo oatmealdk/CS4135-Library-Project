@@ -1,15 +1,10 @@
 import axios from 'axios';
+import { setupAuthInterceptor } from './auth';
 
 const borrowingApi = axios.create({
     baseURL: 'http://localhost:8082/api'
 });
 
-borrowingApi.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+setupAuthInterceptor(borrowingApi);
 
 export default borrowingApi;

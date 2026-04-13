@@ -15,9 +15,14 @@ public class NotificationDispatchService {
     private static final Logger log = LoggerFactory.getLogger(NotificationDispatchService.class);
 
     private final NotificationRepository notificationRepository;
+    private final DueReminderScheduleService dueReminderScheduleService;
 
-    public NotificationDispatchService(NotificationRepository notificationRepository) {
+    public NotificationDispatchService(
+        NotificationRepository notificationRepository,
+        DueReminderScheduleService dueReminderScheduleService
+    ) {
         this.notificationRepository = notificationRepository;
+        this.dueReminderScheduleService = dueReminderScheduleService;
     }
 
     @Transactional
@@ -25,13 +30,23 @@ public class NotificationDispatchService {
         log.debug("Book borrowed message for recordId={}", m.getRecordId());
         notificationRepository.save(build(m.getUserId(), m.getRecordId(), NotificationType.BOOK_BORROWED,
             "Book borrowed: record " + m.getRecordId()));
+        dueReminderScheduleService.scheduleRemindersForBorrow(m.getUserId(), m.getRecordId(), m.getDueDate());
     }
 
     @Transactional
     public void handleRenewed(BookRenewedMessage m) {
         log.debug("Book renewed message for recordId={}", m.getRecordId());
+        dueReminderScheduleService.rescheduleAfterRenew(m.getUserId(), m.getRecordId(), m.getNewDueDate());
         notificationRepository.save(build(m.getUserId(), m.getRecordId(), NotificationType.BOOK_RENEWED,
             "Renewed: record " + m.getRecordId()));
+    }
+
+    @Transactional
+    public void handleReturned(BookReturnedMessage m) {
+        log.debug("Book returned message for recordId={}", m.getRecordId());
+        dueReminderScheduleService.cancelPendingForRecord(m.getRecordId());
+        notificationRepository.save(build(m.getUserId(), m.getRecordId(), NotificationType.BOOK_RETURNED,
+            "Return confirmed: record " + m.getRecordId()));
     }
 
     @Transactional

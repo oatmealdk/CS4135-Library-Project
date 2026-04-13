@@ -144,6 +144,14 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+      book-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8085/actuator/health | grep -q UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
 
   # notification service for sending notifications to users
   notification-service:
@@ -155,6 +163,9 @@ services:
       - "8084:8084"
     environment:
       EUREKA_URI: http://eureka-server:8761/eureka
+      SPRING_DATASOURCE_URL: ${NOTIFICATION_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
       SPRING_RABBITMQ_HOST: rabbitmq
       SPRING_RABBITMQ_PORT: 5672

@@ -3,6 +3,7 @@ package com.elibrary.borrowing_service.web;
 import com.elibrary.borrowing_service.application.BorrowingService;
 import com.elibrary.borrowing_service.application.dto.BorrowRecordDTO;
 import com.elibrary.borrowing_service.application.dto.BorrowRequest;
+import com.elibrary.borrowing_service.application.dto.OverdueAdminDTO;
 import com.elibrary.borrowing_service.application.dto.RunOverdueCheckResult;
 import com.elibrary.borrowing_service.application.dto.SetDueDateRequest;
 import jakarta.validation.Valid;
@@ -64,6 +65,11 @@ public class BorrowingController {
     @GetMapping("/book/{bookId}/active")
     public ResponseEntity<List<BorrowRecordDTO>> getActiveBorrowsByBook(@PathVariable Long bookId) {
         return ResponseEntity.ok(borrowingService.getActiveBorrowsByBook(bookId));
+    }
+
+    @GetMapping("/admin/overdue")
+    public ResponseEntity<List<OverdueAdminDTO>> getCurrentOverdueBorrows() {
+        return ResponseEntity.ok(borrowingService.getCurrentOverdueBorrows());
     }
 
     /**

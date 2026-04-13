@@ -40,13 +40,14 @@ public class IncomingEventListener {
         switch (rk) {
             case EventRoutingKeys.BOOK_BORROWED -> dispatchService.handleBorrowed(
                 jsonMapper.readValue(body, BookBorrowedMessage.class));
+            case EventRoutingKeys.BOOK_RETURNED -> dispatchService.handleReturned(
+                jsonMapper.readValue(body, BookReturnedMessage.class));
             case EventRoutingKeys.BOOK_RENEWED -> dispatchService.handleRenewed(
                 jsonMapper.readValue(body, BookRenewedMessage.class));
             case EventRoutingKeys.BOOK_OVERDUE -> dispatchService.handleOverdue(
                 jsonMapper.readValue(body, BookOverdueMessage.class));
             case EventRoutingKeys.FINE_APPLIED -> dispatchService.handleFineApplied(
                 jsonMapper.readValue(body, FineAppliedMessage.class));
-            case EventRoutingKeys.BOOK_RETURNED -> log.debug("Return event received — no notification action");
             default -> log.warn("Unhandled routing key: {}", rk);
         }
     }

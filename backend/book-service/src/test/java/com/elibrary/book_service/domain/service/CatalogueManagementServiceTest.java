@@ -283,8 +283,8 @@ class CatalogueManagementServiceTest {
 
             when(restTemplate.getForObject(
                 eq("http://borrowing-service/api/borrows/book/1/active"),
-                eq(Boolean.class)
-            )).thenReturn(true);
+                eq(Object[].class)
+            )).thenReturn(new Object[]{new Object()});
 
             IllegalStateException ex = assertThrows(
                 IllegalStateException.class,
@@ -307,7 +307,7 @@ class CatalogueManagementServiceTest {
         void removeFromCatalogue_noActiveBorrows_softDeletes() {
             Book book = createBook(1L, "978-0134685991", 3, 3, BookStatus.AVAILABLE);
             when(bookRepository.findById(1L)).thenReturn(Optional.of(book));
-            when(restTemplate.getForObject(anyString(), eq(Boolean.class))).thenReturn(false);
+            when(restTemplate.getForObject(anyString(), eq(Object[].class))).thenReturn(new Object[0]);
             when(bookRepository.save(any(Book.class))).thenAnswer(i -> i.getArgument(0));
 
             service.removeFromCatalogue(1L);

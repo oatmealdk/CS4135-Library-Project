@@ -3,6 +3,7 @@ package com.elibrary.borrowing_service.application;
 import com.elibrary.borrowing_service.application.dto.BorrowRecordDTO;
 import com.elibrary.borrowing_service.application.dto.FineAdminDTO;
 import com.elibrary.borrowing_service.application.dto.FineDTO;
+import com.elibrary.borrowing_service.application.dto.OverdueAdminDTO;
 import com.elibrary.borrowing_service.domain.model.BorrowRecord;
 import com.elibrary.borrowing_service.domain.model.BorrowStatus;
 import com.elibrary.borrowing_service.domain.model.Fine;
@@ -159,6 +160,31 @@ public class BorrowingService {
             .stream()
             .map(BorrowRecordDTO::from)
             .collect(Collectors.toList());
+    }
+
+    /** Admin view: loans currently in OVERDUE state and not yet returned. */
+    @Transactional(readOnly = true)
+    public List<OverdueAdminDTO> getCurrentOverdueBorrows() {
+        return borrowRecordRepository.findByStatus(BorrowStatus.OVERDUE)
+            .stream()
+            .map(this::toOverdueAdminDto)
+            .collect(Collectors.toList());
+    }
+
+    private OverdueAdminDTO toOverdueAdminDto(BorrowRecord record) {
+        BookServiceClient.BookSummary book = bookServiceClient.getBookSummary(record.getBookId());
+        UserServiceClient.DeskProfile patron = userServiceClient.getDeskProfile(record.getUserId());
+        return new OverdueAdminDTO(
+            patron.name(),
+            patron.email(),
+            book.title(),
+            book.author(),
+            book.isbn(),
+            record.getBorrowDate(),
+            record.getDueDate(),
+            record.getRenewCount(),
+            record.getStatus()
+        );
     }
 
     /**

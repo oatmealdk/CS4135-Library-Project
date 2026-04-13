@@ -1,6 +1,7 @@
 package com.elibrary.borrowing_service.application;
 
 import com.elibrary.borrowing_service.application.dto.BorrowRecordDTO;
+import com.elibrary.borrowing_service.application.dto.OverdueAdminDTO;
 import com.elibrary.borrowing_service.domain.model.BorrowRecord;
 import com.elibrary.borrowing_service.domain.model.BorrowStatus;
 import com.elibrary.borrowing_service.domain.model.Fine;
@@ -315,5 +316,24 @@ class BorrowingServiceTest {
 
         assertEquals(1, result.size());
         assertEquals(42L, result.getFirst().getRecordId());
+    }
+
+    @Test
+    void getCurrentOverdueBorrows_returnsOnlyOverdueRecords() {
+        BorrowRecord record = savedRecord(77L, 2L, 200L);
+        record.markOverdue();
+        when(borrowRecordRepository.findByStatus(BorrowStatus.OVERDUE)).thenReturn(List.of(record));
+        when(userServiceClient.getDeskProfile(2L))
+            .thenReturn(new UserServiceClient.DeskProfile("Alex Admin", "alex@ul.ie"));
+        when(bookServiceClient.getBookSummary(200L))
+            .thenReturn(new BookServiceClient.BookSummary("Clean Architecture", "Robert C. Martin", "9780134494166"));
+
+        List<OverdueAdminDTO> result = borrowingService.getCurrentOverdueBorrows();
+
+        assertEquals(1, result.size());
+        assertEquals("Alex Admin", result.getFirst().patronName());
+        assertEquals("Clean Architecture", result.getFirst().bookTitle());
+        assertEquals(BorrowStatus.OVERDUE, result.getFirst().status());
+        assertNotNull(result.getFirst().dueDate());
     }
 }
