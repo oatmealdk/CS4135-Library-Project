@@ -266,9 +266,9 @@ public class CatalogueManagementService {
 
     @CircuitBreaker(name = "borrowingService", fallbackMethod = "activeBorrowCheckFallback")
     public boolean hasActiveBorrows(Long bookId) {
-        String url = BORROWING_SERVICE_BASE_URL + "/api/borrows/book/" + bookId + "/active";
-        Boolean hasActive = restTemplate.getForObject(url, Boolean.class);
-        return Boolean.TRUE.equals(hasActive);
+    String url = BORROWING_SERVICE_BASE_URL + "/api/borrows/book/" + bookId + "/active";
+    Object[] activeBorrows = restTemplate.getForObject(url, Object[].class);
+    return activeBorrows != null && activeBorrows.length > 0;
     }
 
     public boolean activeBorrowCheckFallback(Long bookId, Throwable throwable) {
