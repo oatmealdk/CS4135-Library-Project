@@ -1,6 +1,7 @@
 package com.elibrary.user_service.config;
 
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -24,6 +26,7 @@ public class JwtUtil {
 
     public String generateToken(Long userId, String email, String role) {
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .subject(email)
                 .claim("userId", userId)
                 .claim("role", role)
@@ -34,20 +37,28 @@ public class JwtUtil {
     }
 
     public String extractEmail(String token) {
+        return extractClaims(token).getSubject();
+    }
+
+    public String extractTokenId(String token) {
+        return extractClaims(token).getId();
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaims(token).getExpiration();
+    }
+
+    public Claims extractClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
                 .build()
                 .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
+                .getPayload();
     }
 
     public boolean isTokenValid(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token);
+            extractClaims(token);
             return true;
         } catch (Exception e) {
             return false;

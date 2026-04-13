@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
+import { setSession } from '../services/auth';
 import AppNav from '../components/AppNav';
 
 function Login({ onLogin, onLogout }) {
@@ -14,8 +15,7 @@ function Login({ onLogin, onLogout }) {
         setError('');
         try {
             const res = await api.post('/auth/login', { email, password });
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('user', JSON.stringify(res.data));
+            setSession(res.data);
             onLogin();
             navigate('/dashboard');
         } catch (err) {

@@ -4,6 +4,7 @@ import api from '../services/api';
 import borrowingApi from '../services/borrowingApi';
 import AppNav from '../components/AppNav';
 import { recordsWithUnpaidFines, unpaidFinesTotalEuro } from '../utils/borrowUtils';
+import { clearSession } from '../services/auth';
 
 function Dashboard({ onLogout }) {
     const navigate = useNavigate();
@@ -40,8 +41,7 @@ function Dashboard({ onLogout }) {
                     }
                 }
             } catch {
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
+                clearSession();
                 if (onLogout) onLogout();
                 navigate('/login');
             } finally {
