@@ -11,6 +11,7 @@ E-Library microservices system built with Spring Boot + React.
 - `backend/book-service`
 - `backend/search-service`
 - `backend/notification-service`
+- `backend/api-gateway` (single entry to APIs on port **8080** via Eureka)
 - `frontend`
 
 ## Run End-to-End (Docker + Frontend)
@@ -23,6 +24,7 @@ E-Library microservices system built with Spring Boot + React.
    - `npm start`
 3. Key URLs:
    - Frontend: `http://localhost:3000`
+   - API Gateway: `http://localhost:8080` (proxies `/api/**` to services; React defaults to this)
    - Eureka: `http://localhost:8761`
    - Config Server: `http://localhost:8888`
 
