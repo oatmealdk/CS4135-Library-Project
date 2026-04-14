@@ -33,6 +33,20 @@ services:
       retries: 8
       start_period: 30s
 
+  # API gateway — single HTTP entry (port 8080); routes /api/** to services via Eureka
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: elibrary-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
   # config server for centralised config
   config-server:
     build:
