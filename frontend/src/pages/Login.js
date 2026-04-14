@@ -22,7 +22,7 @@ function Login({ onLogin, onLogout }) {
             if (err.response?.data?.message) {
                 setError(err.response.data.message);
             } else if (err.request && !err.response) {
-                setError('Cannot reach user-service (port 8081). Check Docker: user-service must be running.');
+                setError('Cannot reach the API (gateway port 8080). Check Docker: api-gateway and user-service must be running.');
             } else {
                 setError('Invalid email or password');
             }

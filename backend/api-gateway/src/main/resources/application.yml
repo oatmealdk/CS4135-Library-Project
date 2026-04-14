@@ -1,0 +1,81 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      # Gateway 5: CORS and routes must live under server.webflux (top-level globalcors is ignored by this starter).
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowed-origin-patterns:
+                  - "http://localhost:3000"
+                  - "http://127.0.0.1:3000"
+                  - "http://localhost:5173"
+                  - "http://127.0.0.1:5173"
+                allowed-methods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowed-headers: "*"
+                allow-credentials: true
+            add-to-simple-url-handler-mapping: true
+          routes:
+            - id: user-service-auth
+              uri: lb://user-service
+              predicates:
+                - Path=/api/auth/**
+            - id: user-service-users
+              uri: lb://user-service
+              predicates:
+                - Path=/api/users/**
+            - id: borrowing-service-borrows
+              uri: lb://borrowing-service
+              predicates:
+                - Path=/api/borrows/**
+            - id: borrowing-service-fines
+              uri: lb://borrowing-service
+              predicates:
+                - Path=/api/fines/**
+            - id: book-service-books
+              uri: lb://book-service
+              predicates:
+                - Path=/api/books/**
+            - id: book-service-categories
+              uri: lb://book-service
+              predicates:
+                - Path=/api/categories/**
+            - id: search-service
+              uri: lb://search-service
+              predicates:
+                - Path=/api/search/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notifications/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

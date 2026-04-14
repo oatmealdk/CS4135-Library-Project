@@ -1,15 +1,11 @@
 import axios from 'axios';
+import { setupAuthInterceptor } from './auth';
+import { GATEWAY_BASE_URL } from './gatewayBase';
 
 const notificationApi = axios.create({
-    baseURL: 'http://localhost:8084/api'
+    baseURL: `${GATEWAY_BASE_URL}/api`
 });
 
-notificationApi.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+setupAuthInterceptor(notificationApi);
 
 export default notificationApi;
