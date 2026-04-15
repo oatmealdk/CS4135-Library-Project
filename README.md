@@ -1,5 +1,6 @@
 # CS4135 Library Project
 
+**Note:** Our README describes the project architecture at a high level, build/run instructions, and traceable scenarios that exhibit required behaviour in the application. For more detailed information and documentation, please see our [wiki](https://github.com/oatmealdk/CS4135-Library-Project/wiki)
 E-Library microservices system built with Spring Boot + React.
 
 ## Services
