@@ -17,6 +17,7 @@ This project is an E-Library microservices system built with Spring Boot + React
 - `frontend`
 
 ## Run End-to-End (Docker + Frontend)
+The following instructions assumes the individual running the project has a .env file with the required database secrets, URLs and JWT secret.
 
 1. Start backend stack:
    - `docker compose up -d --build`
