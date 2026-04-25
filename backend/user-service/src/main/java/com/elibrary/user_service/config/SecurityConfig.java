@@ -19,6 +19,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/me").permitAll()
                         // borrowing-service calls these without a JWT (RestTemplate from Docker network)
                         .requestMatchers("/api/users/*/exists", "/api/users/*/desk-profile").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
                 );
         return http.build();

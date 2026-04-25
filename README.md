@@ -17,7 +17,7 @@ This project is an E-Library microservices system built with Spring Boot + React
 - `frontend`
 
 ## Run End-to-End (Docker + Frontend)
-The following instructions assumes the individual running the project has a **.env file with the required database secrets, URLs and JWT secret in the root of the project folder**, and that **Docker Desktop** is open and running.
+The following instructions assumes the individual running the project has a **.env file with the required database secrets, URLs and JWT secret in the root of the project folder**, and that **Docker Desktop** is open and running. A template is provided in [`.env.example`](.env.example) - copy it and fill in real values.
 
 1. Start backend stack:
    - `docker compose up -d --build`
@@ -30,6 +30,18 @@ The following instructions assumes the individual running the project has a **.e
    - API Gateway: `http://localhost:8080` (proxies `/api/**` to services; React defaults to this)
    - Eureka: `http://localhost:8761`
    - Config Server: `http://localhost:8888`
+
+## API Documentation (Swagger UI)
+
+Each business service exposes OpenAPI 3 documentation via SpringDoc. Once the stack is running:
+
+| Service              | Swagger UI                                    | OpenAPI JSON                                      |
+|----------------------|-----------------------------------------------|---------------------------------------------------|
+| user-service         | `http://localhost:8081/swagger-ui.html`        | `http://localhost:8081/v3/api-docs`               |
+| borrowing-service    | `http://localhost:8082/swagger-ui.html`        | `http://localhost:8082/v3/api-docs`               |
+| book-service         | `http://localhost:8083/swagger-ui.html`        | `http://localhost:8083/v3/api-docs`               |
+| notification-service | `http://localhost:8084/swagger-ui.html`        | `http://localhost:8084/v3/api-docs`               |
+| search-service       | `http://localhost:8085/swagger-ui.html`        | `http://localhost:8085/v3/api-docs`               |
 
 ## Run Automated Tests
 
@@ -106,3 +118,16 @@ Then:
 Traceability notes:
 - This scenario exercises inter-service communication between borrowing and book contexts.
 - Related contract tests exist for client payload mapping in borrowing/book services.
+
+## Known Limitations and Rationale
+
+This project is a university prototype, so a few production-grade concerns are intentionally scoped down. We document them here for transparency.
+
+- **Event consistency window (no transactional outbox):**
+  `borrowing-service` persists state and publishes RabbitMQ events, but does not implement a transactional outbox relay. This leaves a small failure window where data can commit but an event publish can fail. In production this should be upgraded to an outbox + asynchronous publisher pattern.
+
+- **Search-service is currently lightweight by design:**
+  `search-service` is intentionally thin and currently performs basic query/filter logic over catalogue data sourced from `book-service`. The separation is retained to keep a clean evolution path for future indexing/search capabilities (for example Elasticsearch) without tightly coupling that work to the catalogue domain.
+
+- **Configuration security:**
+  Credentials are injected via environment variables (see `.env.example`). The JWT secret must be at least 256 bits for HS256, and this is enforced at runtime by the `jjwt` library. A production deployment would use a proper secrets manager rather than `.env` files.
