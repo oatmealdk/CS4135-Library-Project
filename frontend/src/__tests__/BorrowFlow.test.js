@@ -1,13 +1,21 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import BookDetail from '../pages/BookDetail';
 import borrowingApi from '../services/borrowingApi';
 import bookApi from '../services/bookApi';
 
 jest.mock('../services/borrowingApi');
 jest.mock('../services/bookApi');
+jest.mock('../components/AppNav', () => () => null);
+jest.mock(
+    'react-router-dom',
+    () => ({
+        useParams: () => ({ bookId: '1' }),
+        useNavigate: () => jest.fn(),
+    }),
+    { virtual: true }
+);
 
 const MOCK_BOOK = {
     bookId: 1,
@@ -41,13 +49,7 @@ function setLoggedInUser(user) {
 }
 
 function renderBookDetail() {
-    return render(
-        <MemoryRouter initialEntries={['/books/1']}>
-            <Routes>
-                <Route path="/books/:bookId" element={<BookDetail onLogout={jest.fn()} />} />
-            </Routes>
-        </MemoryRouter>
-    );
+    return render(<BookDetail onLogout={jest.fn()} />);
 }
 
 afterEach(() => {
