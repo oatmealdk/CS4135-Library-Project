@@ -5,6 +5,7 @@
 .env
 *.env
 *.env.*
+!.env.example
 env/
 venv/
 ENV/
@@ -24,6 +25,8 @@ tmp.*
 # Test files (frontend/JS patterns only - don't add test/ here because it'll ignore src/test/ in Java services)
 test.*
 *.test.*
+!**/__tests__/**
+!**/src/**/*.test.js
 
 # Output of compiling
 out/
